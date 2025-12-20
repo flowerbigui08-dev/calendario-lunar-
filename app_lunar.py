@@ -16,10 +16,11 @@ loc_sv = wgs84.latlon(13.689, -89.187)
 st.title("🌙 Calendario Lunar SV")
 st.caption("🌑:Nueva | ✨:Celebra | 🌓:Crec | 🌕:Llena | 🌗:Meng")
 
-# Selectores
+# --- NUEVOS SELECTORES CON BOTONES +/- ---
 col_m, col_a = st.columns(2)
 with col_m:
-    mes = st.selectbox("Mes", range(1, 13), index=datetime.now(tz_sv).month - 1)
+    # Ahora el mes usa botones de + y - (valor del 1 al 12)
+    mes = st.number_input("Mes", min_value=1, max_value=12, value=datetime.now(tz_sv).month)
 with col_a:
     anio = st.number_input("Año", min_value=2024, max_value=2030, value=datetime.now(tz_sv).year)
 
@@ -66,11 +67,11 @@ if st.button('📅 Generar Calendario'):
         fila += "</tr>"
         filas_html += fila
 
-    # El "Contenedor Mágico" que evita que se desarme
+    # Diseño CSS para que se vea igual que el que te gustó
     html_final = f"""
     <style>
-        table {{ width: 100%; border-collapse: collapse; table-layout: fixed; font-family: sans-serif; color: white; }}
-        th {{ color: #888; font-size: 12px; padding-bottom: 5px; }}
+        table {{ width: 100%; border-collapse: collapse; table-layout: fixed; font-family: sans-serif; color: white; background-color: transparent; }}
+        th {{ color: #888; font-size: 12px; padding-bottom: 5px; text-align: center; }}
         td {{ border: 1px solid #444; height: 65px; vertical-align: top; padding: 4px; position: relative; }}
         .n {{ font-size: 10px; color: #aaa; }}
         .e {{ font-size: 18px; text-align: center; margin-top: 5px; }}
@@ -78,7 +79,6 @@ if st.button('📅 Generar Calendario'):
     <table>{header}{filas_html}</table>
     """
     
-    # Esto inyecta el calendario de forma segura para móviles
     components.html(html_final, height=500, scrolling=False)
 
-st.sidebar.caption("v7.0 - ¡La vencida!")
+st.sidebar.caption("v7.1 - SV Stepper Edition")
