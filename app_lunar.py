@@ -12,37 +12,60 @@ st.set_page_config(page_title="Calendario Lunar SV", page_icon="🌙", layout="w
 tz_sv = pytz.timezone('America/El_Salvador')
 loc_sv = wgs84.latlon(13.689, -89.187)
 
-# TRUCO MAESTRO: CSS para obligar a que las 7 columnas NO se desarmen en vertical
+# --- TRUCO DE DISEÑO PARA CELULARES ---
+# Este código obliga a que siempre haya 7 columnas, incluso en vertical
 st.markdown("""
     <style>
-    /* Forza a que el contenedor de columnas sea siempre horizontal */
-    [data-testid="column"] {
-        width: calc(14.28% - 5px) !important;
-        flex: 1 1 calc(14.28% - 5px) !important;
-        min-width: calc(14.28% - 5px) !important;
-        margin: 0 !important;
-        padding: 1px !important;
+    .calendario-grid {
+        display: grid;
+        grid-template-columns: repeat(7, 1fr);
+        gap: 2px;
+        width: 100%;
+        text-align: center;
     }
-    /* Reduce espacios innecesarios */
-    [data-testid="stVerticalBlock"] {
-        gap: 0px !important;
+    .dia-caja {
+        border: 1px solid #444;
+        border-radius: 4px;
+        padding: 4px 1px;
+        min-height: 55px;
+        background-color: #1a1a1a;
+    }
+    .dia-nombre {
+        font-size: 10px;
+        font-weight: bold;
+        color: #888;
+        margin-bottom: 4px;
+    }
+    .numero-dia {
+        font-size: 12px;
+        display: block;
+    }
+    .emoji-fase {
+        font-size: 16px;
+        display: block;
+        margin: 2px 0;
+    }
+    .emoji-celeb {
+        font-size: 12px;
+        display: block;
+        color: #ffd700;
     }
     </style>
     """, unsafe_allow_html=True)
 
 st.title("🌙 Calendario Lunar SV")
 
-# Simbología súper resumida para ganar espacio
-st.caption("🌑:Nueva | ✨:Celebra | 🌓:Crec | 🌕:Llena | 🌗:Meng")
+# Leyenda rápida
+st.caption("🌑=Nueva | ✨=Celebración | 🌕=Llena")
 
-# Selectores compactos
+# Selectores
 col_m, col_a = st.columns(2)
 with col_m:
     mes = st.selectbox("Mes", range(1, 13), index=datetime.now(tz_sv).month - 1)
 with col_a:
     anio = st.number_input("Año", min_value=2024, max_value=2030, value=datetime.now(tz_sv).year)
 
-if st.button('📅 Generar Calendario'):
+if st.button('📅 Mostrar Calendario'):
     ts = api.load.timescale()
     eph = api.load('de421.bsp')
     
@@ -50,24 +73,25 @@ if st.button('📅 Generar Calendario'):
     ultimo_dia = calendar.monthrange(anio, mes)[1]
     t1 = ts.from_datetime(tz_sv.localize(datetime(anio, mes, ultimo_dia, 23, 59)))
 
+    # Calcular fases
     t_fases, y_fases = almanac.find_discrete(t0, t1, almanac.moon_phases(eph))
     fases_dict = {ti.astimezone(tz_sv).day: [yi, ti.astimezone(tz_sv)] for ti, yi in zip(t_fases, y_fases)}
     
     nombres_fases = {0: "🌑", 1: "🌓", 2: "🌕", 3: "🌗"}
 
-    # Dibujar encabezados (D, L, M, M, J, V, S)
-    dias_semana = ["D", "L", "M", "M", "J", "V", "S"]
-    cols_h = st.columns(7)
-    for i, d in enumerate(dias_semana):
-        cols_h[i].markdown(f"<p style='text-align:center; font-size:12px; margin:0;'><b>{d}</b></p>", unsafe_allow_html=True)
-
-    # Dibujar los días
-    cal = calendar.Calendar(firstweekday=6) 
+    # --- DIBUJAR CALENDARIO ---
+    # Encabezados
+    dias_nombres = ["D", "L", "M", "M", "J", "V", "S"]
+    header_html = "".join([f"<div class='dia-nombre'>{d}</div>" for d in dias_nombres])
+    
+    # Días del mes
+    cal_html = ""
+    cal = calendar.Calendar(firstweekday=6)
+    
     for semana in cal.monthdayscalendar(anio, mes):
-        cols = st.columns(7)
-        for i, dia in enumerate(semana):
+        for dia in semana:
             if dia == 0:
-                cols[i].write("")
+                cal_html += "<div style='border:none;'></div>"
             else:
                 f_emoji = ""
                 c_emoji = ""
@@ -79,7 +103,6 @@ if st.button('📅 Generar Calendario'):
                     
                     if f_tipo == 0: # Luna Nueva
                         f_h = fases_dict[dia][1]
-                        # Cálculo de atardecer
                         t_s0 = ts.from_datetime(f_h.replace(hour=0, minute=0))
                         t_s1 = ts.from_datetime(f_h.replace(hour=23, minute=59))
                         t_s, y_s = almanac.find_discrete(t_s0, t_s1, almanac.sunrise_sunset(eph, loc_sv))
@@ -88,20 +111,20 @@ if st.button('📅 Generar Calendario'):
                         if f_h < atardecer:
                             c_emoji = "✨"
                         elif dia < ultimo_dia:
-                            if (dia + 1) not in fases_dict: fases_dict[dia+1] = ["CELEB", None]
-                            else: c_emoji = "✨"
+                            fases_dict[dia + 1] = ["CELEB", None]
 
                 if dia in fases_dict and fases_dict[dia][0] == "CELEB":
                     c_emoji = "✨"
 
-                # Cuadro de día compacto
-                html_celda = f"""
-                <div style='text-align:center; border:0.5px solid #555; border-radius:3px; padding:2px; min-height:45px;'>
-                    <span style='font-size:11px; color:#ccc;'>{dia}</span><br>
-                    <span style='font-size:14px;'>{f_emoji}</span><br>
-                    <span style='font-size:11px;'>{c_emoji}</span>
+                cal_html += f"""
+                <div class='dia-caja'>
+                    <span class='numero-dia'>{dia}</span>
+                    <span class='emoji-fase'>{f_emoji}</span>
+                    <span class='emoji-celeb'>{c_emoji}</span>
                 </div>
                 """
-                cols[i].markdown(html_celda, unsafe_allow_html=True)
+    
+    # Mostrar todo el bloque junto
+    st.markdown(f"<div class='calendario-grid'>{header_html}{cal_html}</div>", unsafe_allow_html=True)
 
-st.sidebar.caption("v2.2 - El Salvador Fixed")
+st.sidebar.caption("v3.0 - El Salvador Ultra-Compact")
