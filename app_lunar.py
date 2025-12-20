@@ -5,19 +5,30 @@ from datetime import datetime, timedelta
 import pytz
 import calendar
 
-# Configuración de página
+# 1. Configuración de página
 st.set_page_config(page_title="Calendario Lunar SV", page_icon="🌙", layout="wide")
 
-# Zona horaria y ubicación (San Salvador)
+# 2. Truco para que las columnas NO se desarmen en el celular
+st.markdown("""
+    <style>
+    [data-testid="column"] {
+        width: 14% !important;
+        flex: 1 1 14% !important;
+        min-width: 14% !important;
+        text-align: center;
+    }
+    div[data-testid="stExpander"] { border: none !important; }
+    </style>
+    """, unsafe_allow_html=True)
+
+# 3. Datos de El Salvador
 tz_sv = pytz.timezone('America/El_Salvador')
 loc_sv = wgs84.latlon(13.689, -89.187)
 
 st.title("🌙 Calendario Lunar SV")
+st.caption("🌑:Nueva | ✨:Celebra | 🌓:Crec | 🌕:Llena | 🌗:Meng")
 
-# Leyenda compacta
-st.markdown("🌑:Nueva | ✨:Celebra | 🌓:Crec | 🌕:Llena | 🌗:Meng")
-
-# Selectores
+# 4. Selectores
 col_m, col_a = st.columns(2)
 with col_m:
     mes = st.selectbox("Mes", range(1, 13), index=datetime.now(tz_sv).month - 1)
@@ -38,25 +49,27 @@ if st.button('📅 Generar Calendario'):
     
     nombres_fases = {0: "🌑", 1: "🌓", 2: "🌕", 3: "🌗"}
 
-    # Construcción de la tabla con ancho total
-    # Usamos HTML para asegurar que el ancho sea 100% y las celdas iguales
-    header = "<tr><th>Dom</th><th>Lun</th><th>Mar</th><th>Mié</th><th>Jue</th><th>Vie</th><th>Sáb</th></tr>"
-    filas_html = ""
+    # 5. Encabezados de días
+    dias_nombres = ["D", "L", "M", "M", "J", "V", "S"]
+    cols_h = st.columns(7)
+    for i, d in enumerate(dias_nombres):
+        cols_h[i].write(f"*{d}*")
 
+    # 6. Dibujar días
     cal = calendar.Calendar(firstweekday=6)
     for semana in cal.monthdayscalendar(anio, mes):
-        fila = "<tr>"
-        for dia in semana:
+        cols = st.columns(7)
+        for i, dia in enumerate(semana):
             if dia == 0:
-                fila += "<td style='border:1px solid #444;'>&nbsp;</td>"
+                cols[i].write(" ")
             else:
-                f_emoji = "&nbsp;"
-                c_emoji = "&nbsp;"
+                f_emoji = ""
+                c_emoji = ""
                 
                 if dia in fases_dict:
                     f_tipo = fases_dict[dia][0]
                     if f_tipo != "CELEB":
-                        f_emoji = nombres_fases.get(f_tipo, "&nbsp;")
+                        f_emoji = nombres_fases.get(f_tipo, "")
                     
                     if f_tipo == 0: # Luna Nueva
                         f_h = fases_dict[dia][1]
@@ -73,23 +86,8 @@ if st.button('📅 Generar Calendario'):
                 if dia in fases_dict and fases_dict[dia][0] == "CELEB":
                     c_emoji = "✨"
 
-                # Celda con tamaño uniforme y emojis centrados
-                fila += f"""
-                <td style='border:1px solid #444; text-align:center; width:14%; height:60px; vertical-align:top;'>
-                    <span style='font-size:10px; color:#888;'>{dia}</span><br>
-                    <span style='font-size:16px;'>{f_emoji}</span><br>
-                    <span style='font-size:12px;'>{c_emoji}</span>
-                </td>
-                """
-        fila += "</tr>"
-        filas_html += fila
+                # Mostrar el día en un cuadro limpio de Streamlit
+                contenido = f"{dia}\n\n{f_emoji}{c_emoji}"
+                cols[i].help(contenido) # Usamos 'help' porque crea un cuadrito muy pequeño y estético
 
-    # Renderizar la tabla final ocupando todo el ancho
-    st.markdown(f"""
-    <table style='width:100%; border-collapse:collapse; table-layout:fixed;'>
-        {header}
-        {filas_html}
-    </table>
-    """, unsafe_allow_html=True)
-
-st.sidebar.caption("v5.0 - Final El Salvador")
+st.sidebar.caption("v6.0 - El Salvador")
