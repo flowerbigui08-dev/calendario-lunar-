@@ -2,7 +2,7 @@ import streamlit as st
 import streamlit.components.v1 as components
 from skyfield import api, almanac
 from skyfield.api import wgs84
-from datetime import datetime
+from datetime import datetime, timedelta
 import pytz
 import calendar
 
@@ -14,12 +14,11 @@ tz_sv = pytz.timezone('America/El_Salvador')
 loc_sv = wgs84.latlon(13.689, -89.187)
 
 st.title("🌙 Calendario Lunar SV")
-st.caption("🌑:Nueva | ✨:Celebra | 🌓:Crec | 🌕:Llena | 🌗:Meng")
+st.caption("🌑:Nueva | ✨:Celebración | 🌓:Crec | 🌕:Llena | 🌗:Meng")
 
-# --- NUEVOS SELECTORES CON BOTONES +/- ---
+# Selectores
 col_m, col_a = st.columns(2)
 with col_m:
-    # Ahora el mes usa botones de + y - (valor del 1 al 12)
     mes = st.number_input("Mes", min_value=1, max_value=12, value=datetime.now(tz_sv).month)
 with col_a:
     anio = st.number_input("Año", min_value=2024, max_value=2030, value=datetime.now(tz_sv).year)
@@ -36,8 +35,9 @@ if st.button('📅 Generar Calendario'):
     fases_dict = {ti.astimezone(tz_sv).day: [yi, ti.astimezone(tz_sv)] for ti, yi in zip(t_fases, y_fases)}
     
     nombres_fases = {0: "🌑", 1: "🌓", 2: "🌕", 3: "🌗"}
+    meses_nombres = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"]
 
-    # Construcción de la Tabla Segura
+    # Construcción de la Tabla
     header = "<tr><th>D</th><th>L</th><th>M</th><th>M</th><th>J</th><th>V</th><th>S</th></tr>"
     filas_html = ""
     cal = calendar.Calendar(firstweekday=6)
@@ -53,32 +53,47 @@ if st.button('📅 Generar Calendario'):
                 if dia in fases_dict:
                     f_tipo = fases_dict[dia][0]
                     if f_tipo != "CELEB": f_emoji = nombres_fases.get(f_tipo, "")
-                    if f_tipo == 0:
+                    
+                    if f_tipo == 0: # Luna Nueva
                         f_h = fases_dict[dia][1]
                         t_s0 = ts.from_datetime(f_h.replace(hour=0, minute=0))
                         t_s1 = ts.from_datetime(f_h.replace(hour=23, minute=59))
                         t_s, y_s = almanac.find_discrete(t_s0, t_s1, almanac.sunrise_sunset(eph, loc_sv))
                         atardecer = next((ti.astimezone(tz_sv) for ti, yi in zip(t_s, y_s) if yi == 0), f_h.replace(hour=17, minute=45))
-                        if f_h < atardecer: c_emoji = "✨"
-                        elif dia < ultimo_dia: fases_dict[dia + 1] = ["CELEB", None]
-                if dia in fases_dict and fases_dict[dia][0] == "CELEB": c_emoji = "✨"
+                        
+                        # NUEVA REGLA DE CELEBRACIÓN
+                        if f_h < atardecer:
+                            # Si nace antes del atardecer, celebra al día siguiente
+                            target_day = dia + 1
+                        else:
+                            # Si nace después del atardecer, celebra dos días después
+                            target_day = dia + 2
+                        
+                        if target_day <= ultimo_dia:
+                            fases_dict[target_day] = ["CELEB", None]
+
+                if dia in fases_dict and fases_dict[dia][0] == "CELEB":
+                    c_emoji = "✨"
 
                 fila += f"<td><div class='n'>{dia}</div><div class='e'>{f_emoji}{c_emoji}</div></td>"
         fila += "</tr>"
         filas_html += fila
 
-    # Diseño CSS para que se vea igual que el que te gustó
+    # HTML con Mejoras de Visibilidad
     html_final = f"""
+    <div style='text-align:center; color:#FFD700; font-size:24px; font-weight:bold; margin-bottom:10px; font-family:sans-serif;'>
+        {meses_nombres[mes-1]} {anio}
+    </div>
     <style>
-        table {{ width: 100%; border-collapse: collapse; table-layout: fixed; font-family: sans-serif; color: white; background-color: transparent; }}
-        th {{ color: #888; font-size: 12px; padding-bottom: 5px; text-align: center; }}
-        td {{ border: 1px solid #444; height: 65px; vertical-align: top; padding: 4px; position: relative; }}
-        .n {{ font-size: 10px; color: #aaa; }}
-        .e {{ font-size: 18px; text-align: center; margin-top: 5px; }}
+        table {{ width: 100%; border-collapse: collapse; table-layout: fixed; font-family: sans-serif; color: white; }}
+        th {{ color: #aaa; font-size: 14px; padding-bottom: 8px; text-align: center; }}
+        td {{ border: 1px solid #555; height: 75px; vertical-align: top; padding: 6px; }}
+        .n {{ font-size: 16px; color: #ffffff; font-weight: bold; }}
+        .e {{ font-size: 22px; text-align: center; margin-top: 8px; }}
     </style>
     <table>{header}{filas_html}</table>
     """
     
-    components.html(html_final, height=500, scrolling=False)
+    components.html(html_final, height=600, scrolling=False)
 
-st.sidebar.caption("v7.1 - SV Stepper Edition")
+st.sidebar.caption("v8.0 - Edición Legibilidad Máxima")
