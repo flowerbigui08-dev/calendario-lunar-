@@ -6,88 +6,83 @@ from datetime import datetime
 import pytz
 import calendar
 
-# Configuración inicial
+# Configuración
 st.set_page_config(page_title="Calendario Lunar SV", page_icon="🌙", layout="wide")
 
 # Datos El Salvador
 tz_sv = pytz.timezone('America/El_Salvador')
 loc_sv = wgs84.latlon(13.689, -89.187)
 
-# --- ESTILOS CSS AGRESIVOS PARA REDUCIR TAMAÑO ---
+# --- CSS REPARADO Y COMPACTO ---
 st.markdown("""
     <style>
-    .main-title { text-align: center; color: white; font-size: 28px; font-weight: bold; margin-bottom: 0px; }
-    
-    .big-font {
-        font-size: 18px !important; 
-        font-weight: bold; 
-        color: #FF8C00; 
-        margin-top: 10px !important;
-        margin-bottom: 5px !important;
-        text-align: center;
-    }
+    /* Título y textos */
+    .main-title { text-align: center; color: white; font-size: 24px; font-weight: bold; margin-bottom: 5px; }
+    .label-style { color: #FF8C00; font-weight: bold; text-align: center; margin-bottom: 8px; font-size: 16px; }
 
-    /* REDUCCIÓN TOTAL DE BOTONES */
-    div[data-testid="stButton"] button {
-        height: 28px !important;
-        padding-top: 0px !important;
-        padding-bottom: 0px !important;
-        font-size: 13px !important;
-        line-height: 28px !important;
-        min-height: 28px !important;
-        border: 1px solid #FF8C00 !important;
-    }
-    
-    /* Acercar las filas de botones entre sí */
-    [data-testid="stVerticalBlock"] > div {
-        gap: 0.1rem !important;
-    }
-
-    /* Limitar el ancho del bloque de botones */
+    /* FORZAR COLUMNAS PEQUEÑAS PARA BOTONES */
     [data-testid="stHorizontalBlock"] {
-        max-width: 300px !important;
-        margin: 0 auto !important;
-        gap: 4px !important;
+        gap: 5px !important;
+        display: flex !important;
+        flex-direction: row !important;
+        justify-content: center !important;
+    }
+    
+    /* Ajuste estricto de botones */
+    div[data-testid="stButton"] > button {
+        width: 100% !important;
+        height: 30px !important;
+        padding: 0px !important;
+        font-size: 13px !important;
+        border: 1px solid #FF8C00 !important;
+        border-radius: 6px !important;
+        background-color: transparent !important;
+        color: white !important;
     }
 
-    /* Cuadros de información compactos */
-    .info-card { 
-        border: 1px solid #444; 
-        padding: 10px; 
-        border-radius: 8px; 
-        background-color: #1a1a1a; 
-        margin: 5px auto !important;
-        max-width: 380px;
+    /* Cuadros de abajo (Leyendas) */
+    .info-container {
+        border: 1px solid #444;
+        border-radius: 10px;
+        background-color: #1a1a1a;
+        padding: 12px;
+        margin: 10px auto;
+        max-width: 350px;
     }
-    .info-item { font-size: 14px; color: #ddd; margin-bottom: 3px; display: flex; align-items: center; }
+    .info-line { 
+        display: flex; 
+        align-items: center; 
+        font-size: 14px; 
+        color: #ddd; 
+        margin-bottom: 4px;
+    }
 
-    /* Año más discreto */
-    div[data-testid="stNumberInput"] { width: 110px !important; margin: 0 auto !important; }
-    input { font-size: 18px !important; height: 35px !important; }
+    /* Input Año */
+    div[data-testid="stNumberInput"] { width: 100px !important; margin: 0 auto !important; }
     </style>
     """, unsafe_allow_html=True)
 
 st.markdown("<h1 class='main-title'>🌙 Calendario Lunar</h1>", unsafe_allow_html=True)
 
-# 1. Selector de Año
-st.markdown('<p class="big-font">Año:</p>', unsafe_allow_html=True)
+# 1. Año
+st.markdown('<p class="label-style">Año:</p>', unsafe_allow_html=True)
 anio = st.number_input("", min_value=2024, max_value=2030, value=datetime.now(tz_sv).year, label_visibility="collapsed")
 
-# 2. Selector de Mes
-st.markdown('<p class="big-font">Mes:</p>', unsafe_allow_html=True)
+# 2. Meses en cuadrícula real de 3
+st.markdown('<p class="label-style">Mes:</p>', unsafe_allow_html=True)
 meses_abr = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"]
 meses_nombres = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"]
 
 if 'mes_sel' not in st.session_state:
     st.session_state.mes_sel = datetime.now(tz_sv).month
 
-# Botones super compactos
+# Dibujar botones
 for i in range(0, 12, 3):
-    cols = st.columns(3)
+    cols = st.columns([1,1,1]) # Forzamos 3 columnas iguales
     for j in range(3):
         idx = i + j
         if idx < 12:
-            if cols[j].button(meses_abr[idx], key=f"m_{idx}", use_container_width=True):
+            if cols[j].button(meses_abr[idx], key=f"btn_{idx}"):
                 st.session_state.mes_sel = idx + 1
 
 mes = st.session_state.mes_sel
@@ -105,9 +100,10 @@ t_equi, y_equi = almanac.find_discrete(t0, t1, almanac.seasons(eph))
 equi_dict = {ti.astimezone(tz_sv).day: yi for ti, yi in zip(t_equi, y_equi)}
 
 info_utc, info_sv = "", ""
-iconos_fases = {0: "🌑", 1: "🌓", 2: "🌕", 3: "🌗"}
+# Iconos grandes para el calendario
+iconos_cal = {0: "🌑", 1: "🌓", 2: "🌕", 3: "🌗"}
 
-# Construir tabla
+# Construir tabla HTML
 header = "<tr><th>D</th><th>L</th><th>M</th><th>M</th><th>J</th><th>V</th><th>S</th></tr>"
 filas_html = ""
 cal = calendar.Calendar(firstweekday=6)
@@ -121,11 +117,12 @@ for semana in cal.monthdayscalendar(anio, mes):
             if dia in fases_dict:
                 f_tipo = fases_dict[dia][0]
                 if f_tipo != "CELEB":
-                    icons += iconos_fases.get(f_tipo, "")
+                    icons += iconos_cal.get(f_tipo, "")
                     if f_tipo == 0:
                         t_conj = fases_dict[dia][1]
-                        info_utc = f"{t_conj.astimezone(pytz.utc).strftime('%d/%m/%y %H:%M')} (UTC)"
-                        info_sv = f"{t_conj.strftime('%d/%m/%y %I:%M %p')} (SV)"
+                        info_utc = t_conj.astimezone(pytz.utc).strftime('%d/%m/%y %H:%M') + " (UTC)"
+                        info_sv = t_conj.strftime('%d/%m/%y %I:%M %p') + " (SV)"
+                        # Lógica celebración
                         t_s0, t_s1 = ts.from_datetime(t_conj.replace(hour=0, minute=0)), ts.from_datetime(t_conj.replace(hour=23, minute=59))
                         t_s, y_s = almanac.find_discrete(t_s0, t_s1, almanac.sunrise_sunset(eph, loc_sv))
                         atardecer = next((ti.astimezone(tz_sv) for ti, yi in zip(t_s, y_s) if yi == 0), t_conj.replace(hour=17, minute=45))
@@ -134,7 +131,7 @@ for semana in cal.monthdayscalendar(anio, mes):
             
             if dia in fases_dict and fases_dict[dia][0] == "CELEB":
                 icons += "🌘"
-                b_style = "style='border: 1.2px solid #FF8C00; border-radius: 5px;'"
+                b_style = "style='border: 1px solid #FF8C00; border-radius: 5px;'"
             
             if dia in equi_dict and equi_dict[dia] == 0: icons += "🌸"
             fila += f"<td {b_style}><div class='n'>{dia}</div><div class='e'>{icons}</div></td>"
@@ -142,28 +139,32 @@ for semana in cal.monthdayscalendar(anio, mes):
 
 # Render de Tabla
 html_cal = f"""
-<div style='text-align:center; color:#FF8C00; font-size:20px; font-weight:bold; margin-bottom:5px; font-family:sans-serif;'>
+<div style='text-align:center; color:#FF8C00; font-size:18px; font-weight:bold; margin-bottom:5px;'>
     {meses_nombres[mes-1]} {anio}
 </div>
 <style>
-    table {{ width: 100%; border-collapse: collapse; table-layout: fixed; color: white; border-bottom: 1px solid #333; }}
-    th {{ color: #FF4B4B; font-size: 13px; text-align: center; padding-bottom: 4px; font-family: sans-serif; }}
-    td {{ border: 1px solid #333; height: 60px; vertical-align: top; padding: 3px; box-sizing: border-box; }}
-    .n {{ font-size: 14px; font-weight: bold; font-family: sans-serif; }}
-    .e {{ font-size: 22px; text-align: center; margin-top: 1px; line-height: 1; }}
+    table {{ width: 100%; border-collapse: collapse; table-layout: fixed; color: white; }}
+    th {{ color: #FF4B4B; font-size: 12px; text-align: center; padding-bottom: 4px; }}
+    td {{ border: 1px solid #333; height: 55px; vertical-align: top; padding: 2px; box-sizing: border-box; }}
+    .n {{ font-size: 13px; font-weight: bold; }}
+    .e {{ font-size: 20px; text-align: center; margin-top: 1px; }}
 </style>
 <table>{header}{filas_html}</table>
 """
-components.html(html_cal, height=420)
+components.html(html_cal, height=380)
 
-# 3. Leyendas Compactas
+# 3. Leyendas (Cuadros Reparados)
 st.markdown(f"""
-<div class="info-card">
-    <div class="info-item">🌑 Nueva | 🌘 Celebración</div>
-    <div class="info-item">🌸 Primavera | 🌕 Llena</div>
+<div class="info-container">
+    <div style="color:#FF8C00; font-weight:bold; margin-bottom:8px; font-size:15px; text-align:center;">Simbología:</div>
+    <div class="info-line">🌑 Luna Nueva / Conjunción</div>
+    <div class="info-line">🌘 Día de Celebración</div>
+    <div class="info-line">🌸 Equinoccio / 🌕 Luna Llena</div>
 </div>
-<div class="info-card">
-    <div class="info-item">🌎 {info_utc if info_utc else '---'}</div>
-    <div class="info-item">📍 {info_sv if info_sv else '---'}</div>
+
+<div class="info-container">
+    <div style="color:#FF8C00; font-weight:bold; margin-bottom:8px; font-size:15px; text-align:center;">Datos Conjunción:</div>
+    <div class="info-line">🌎 {info_utc if info_utc else '---'}</div>
+    <div class="info-line">📍 {info_sv if info_sv else '---'}</div>
 </div>
 """, unsafe_allow_html=True)
