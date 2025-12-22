@@ -9,7 +9,7 @@ import calendar
 # Configuración de página
 st.set_page_config(page_title="Calendario Lunar SV", page_icon="🌙", layout="wide")
 
-# Inicializar el mes en la memoria si no existe
+# Inicializar memoria para el mes si no existe
 if 'mes_id' not in st.session_state:
     st.session_state.mes_id = datetime.now(pytz.timezone('America/El_Salvador')).month - 1
 
@@ -21,7 +21,6 @@ hoy_sv = datetime.now(tz_sv)
 # --- ESTILOS CSS REFORZADOS ---
 st.markdown("""
     <style>
-    /* Ocultar etiquetas originales */
     div[data-testid="stNumberInput"] label { display: none !important; }
     
     .custom-label {
@@ -34,11 +33,10 @@ st.markdown("""
     
     .main-title { text-align: center; color: white; font-size: 36px; font-weight: bold; }
 
-    /* Selector de Año */
     div[data-testid="stNumberInput"] { width: 220px !important; margin: 0 auto !important; }
     input { font-size: 30px !important; font-weight: bold !important; text-align: center !important; }
 
-    /* BOTONES DE MESES (MÁS GRANDES Y VISIBLES) */
+    /* BOTONES DE MESES GIGANTES */
     .stTabs [data-baseweb="tab-list"] { gap: 10px; justify-content: center; }
     .stTabs [data-baseweb="tab"] {
         height: 75px !important;
@@ -53,10 +51,8 @@ st.markdown("""
     .stTabs [aria-selected="true"] { 
         border: 2px solid #FF8C00 !important; 
         color: #FF8C00 !important;
-        background-color: rgba(255, 140, 0, 0.15) !important;
     }
 
-    /* Tarjetas de Información */
     .info-card {
         border: 1.5px solid #444;
         border-radius: 15px;
@@ -72,24 +68,25 @@ st.markdown("""
 
 st.markdown("<h1 class='main-title'>🌙 Calendario Lunar</h1>", unsafe_allow_html=True)
 
-# 1. Año (Con etiqueta grande)
+# 1. Año
 st.markdown("<p class='custom-label'>Año:</p>", unsafe_allow_html=True)
 anio = st.number_input("Año_Hidden", min_value=2024, max_value=2030, value=hoy_sv.year)
 
-# 2. Selector de Mes (Corregido para que cambie)
-st.markdown("<p class='custom-label'>Mes:</p>", unsafe_allow_html=True)
+# 2. Selector de Mes
+st.markdown("<p class='custom-label'>Selecciona el Mes:</p>", unsafe_allow_html=True)
 meses_nombres = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"]
 meses_completos = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"]
 
-# Usamos st.tabs pero guardamos la elección en session_state
+# Usamos st.tabs para la barra de meses
 tabs = st.tabs(meses_nombres)
-mes_sel = st.session_state.mes_id + 1 # Por defecto el actual
+mes_sel = st.session_state.mes_id + 1
 
 for i, tab in enumerate(tabs):
     with tab:
+        # Si el usuario hace clic en una pestaña diferente, actualizamos y recargamos
         if st.session_state.mes_id != i:
             st.session_state.mes_id = i
-            st.rerun() # Esto fuerza el cambio inmediato del calendario
+            st.rerun()
         mes_sel = i + 1
         nombre_mes = meses_completos[i]
 
@@ -124,20 +121,22 @@ for semana in calendar.Calendar(firstweekday=6).monthdayscalendar(anio, mes_sel)
                     # Cálculo celebración
                     t_s0, t_s1 = ts.from_datetime(t_c.replace(hour=0, minute=0)), ts.from_datetime(t_c.replace(hour=23, minute=59))
                     t_s, y_s = almanac.find_discrete(t_s0, t_s1, almanac.sunrise_sunset(eph, loc_sv))
-                    atardecer = next((ti.astimezone(tz_sv) for ti, yi in zip(t_s, y_s) if yi == 0), t_c.replace(hour=17, 45))
+                    # CORRECCIÓN DEL ERROR AQUÍ: se añadió minute=45
+                    atardecer = next((ti.astimezone(tz_sv) for ti, yi in zip(t_s, y_s) if yi == 0), t_c.replace(hour=17, minute=45))
                     target = dia + 1 if t_c < atardecer else dia + 2
                     if target <= ult_dia: datos_luna[target] = ["CELEB", None]
 
+            # Borde hoy (Verde) y Celebración (Naranja)
             if dia == hoy_sv.day and mes_sel == hoy_sv.month and anio == hoy_sv.year:
-                b_style = "border: 2.2px solid #00FF7F; background-color: rgba(0, 255, 127, 0.1);"
+                b_style = "border: 2.5px solid #00FF7F; background-color: rgba(0, 255, 127, 0.1);"
             elif dia in datos_luna and datos_luna[dia][0] == "CELEB":
                 txt_i = "🌘"
-                b_style = "border: 2.2px solid #FF8C00;"
+                b_style = "border: 2.5px solid #FF8C00;"
             
             fila += f"<td><div class='n'>{dia}</div><div class='e'>{txt_i}</div></td>"
     filas_html += fila + "</tr>"
 
-# Render de Tabla
+# Render de Tabla con nombre de mes dinámico
 html_final = f"""
 <div style='text-align:center; color:#FF8C00; font-size:32px; font-weight:bold; margin-bottom:15px;'>{nombre_mes} {anio}</div>
 <style>
@@ -154,23 +153,18 @@ html_final = f"""
 """
 components.html(html_final, height=620)
 
-# 3. Paneles de Información
-c1, c2 = st.columns(2)
-with c1:
-    st.markdown(f"""
-    <div class="info-card">
-        <div style="color:#FF8C00; font-weight:bold; margin-bottom:15px; font-size:22px;">Simbología:</div>
-        <div class="info-item"><span style="width:20px; height:20px; border:2.2px solid #00FF7F; display:inline-block; margin-right:15px;"></span> Hoy</div>
-        <div class="info-item"><span class="emoji-span">🌑</span> Luna Nueva</div>
-        <div class="info-item"><span class="emoji-span">🌘</span> Celebración</div>
-        <div class="info-item"><span class="emoji-span">🌕</span> Luna Llena</div>
-    </div>
-    """, unsafe_allow_html=True)
-with c2:
-    st.markdown(f"""
-    <div class="info-card">
-        <div style="color:#FF8C00; font-weight:bold; margin-bottom:15px; font-size:22px;">Conjunción:</div>
-        <div class="info-item"><span class="emoji-span">🌎</span> {res_utc} (UTC)</div>
-        <div class="info-item"><span class="emoji-span">📍</span> {res_sv} (SV)</div>
-    </div>
-    """, unsafe_allow_html=True)
+# 3. Leyendas
+st.markdown(f"""
+<div class="info-card">
+    <div style="color:#FF8C00; font-weight:bold; margin-bottom:15px; font-size:22px;">Simbología:</div>
+    <div class="info-item"><span style="width:20px; height:20px; border:2.2px solid #00FF7F; display:inline-block; margin-right:15px;"></span> Día Actual</div>
+    <div class="info-item"><span class="emoji-span">🌑</span> Luna Nueva</div>
+    <div class="info-item"><span class="emoji-span">🌘</span> Celebración</div>
+    <div class="info-item"><span class="emoji-span">🌕</span> Luna Llena</div>
+</div>
+<div class="info-card">
+    <div style="color:#FF8C00; font-weight:bold; margin-bottom:15px; font-size:22px;">Conjunción:</div>
+    <div class="info-item"><span class="emoji-span">🌎</span> {res_utc} (UTC)</div>
+    <div class="info-item"><span class="emoji-span">📍</span> {res_sv} (SV)</div>
+</div>
+""", unsafe_allow_html=True)
