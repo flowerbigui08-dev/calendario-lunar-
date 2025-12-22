@@ -13,35 +13,45 @@ st.set_page_config(page_title="Calendario Lunar SV", page_icon="🌙", layout="w
 tz_sv = pytz.timezone('America/El_Salvador')
 loc_sv = wgs84.latlon(13.689, -89.187)
 
-# --- ESTILOS CSS REFORZADOS ---
+# --- ESTILOS CSS REFINADOS PARA MÓVIL ---
 st.markdown("""
     <style>
-    .main-title { text-align: center; color: white; font-size: 32px; font-weight: bold; margin-bottom: 20px; }
+    /* Título Principal */
+    .main-title { text-align: center; color: white; font-size: 32px; font-weight: bold; margin-bottom: 5px; }
     
-    /* Etiquetas de Año y Mes más grandes */
-    .stNumberInput label, .stRadio label {
-        font-size: 24px !important;
+    /* Etiquetas de Año y Mes */
+    .stNumberInput label, .section-label {
+        font-size: 22px !important;
         color: #FF8C00 !important;
         font-weight: bold !important;
-        display: block;
         text-align: center;
+        display: block;
+        margin-bottom: 10px !important;
     }
 
-    /* Tamaño de letra dentro del selector de año */
-    input { font-size: 26px !important; font-weight: bold !important; text-align: center !important; }
+    /* Input de año grande y centrado */
+    div[data-testid="stNumberInput"] { width: 160px !important; margin: 0 auto !important; }
+    input { font-size: 26px !important; font-weight: bold !important; text-align: center !important; height: 50px !important; }
 
-    /* Tamaño de letra de los meses (Radio Button) */
-    div[data-testid="stRadio"] div[role="radiogroup"] {
-        font-size: 20px !important;
-        justify-content: center;
+    /* Estilo para las Pestañas (Tabs) - Ordenadas y sin teclado */
+    .stTabs [data-baseweb="tab-list"] {
+        gap: 8px;
+        justify-content: flex-start;
+        overflow-x: auto; /* Permite deslizar los meses en móvil */
     }
-    
-    div[data-testid="stRadio"] label {
-        font-size: 20px !important;
-        padding: 10px !important;
+    .stTabs [data-baseweb="tab"] {
+        background-color: #1a1a1a;
+        border-radius: 8px;
+        padding: 8px 16px;
+        color: #aaa;
+        font-size: 16px;
+    }
+    .stTabs [aria-selected="true"] {
+        color: #FF8C00 !important;
+        border-bottom-color: #FF8C00 !important;
     }
 
-    /* Cuadros de información (Una línea por emoji) */
+    /* Cuadros de información (Leyendas) */
     .info-card {
         border: 1.5px solid #444;
         border-radius: 15px;
@@ -59,20 +69,31 @@ st.markdown("""
     }
     .emoji-span { font-size: 26px; margin-right: 15px; }
 
-    /* Centrar selectores */
-    div[data-testid="stNumberInput"] { width: 180px !important; margin: 0 auto !important; }
+    /* Eliminar espacios excesivos de Streamlit */
+    .block-container { padding-top: 2rem !important; }
     </style>
     """, unsafe_allow_html=True)
 
 st.markdown("<h1 class='main-title'>🌙 Calendario Lunar</h1>", unsafe_allow_html=True)
 
-# 1. Selector de Año (Sin que salte teclado al inicio)
-anio = st.number_input("Selecciona el Año", min_value=2024, max_value=2030, value=datetime.now(tz_sv).year)
+# 1. Selector de Año
+anio = st.number_input("Año", min_value=2024, max_value=2030, value=datetime.now(tz_sv).year)
 
-# 2. Selector de Mes (Radio Button para evitar el teclado)
-meses_nombres = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"]
-mes_nombre = st.radio("Selecciona el Mes", meses_nombres, index=datetime.now(tz_sv).month - 1, horizontal=True)
-mes = meses_nombres.index(mes_nombre) + 1
+# 2. Selector de Mes con Pestañas (Evita el teclado y ordena el diseño)
+st.markdown("<p class='section-label'>Selecciona el Mes:</p>", unsafe_allow_html=True)
+meses_nombres = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"]
+meses_completos = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"]
+
+# Esto crea una fila de pestañas que se puede deslizar en el móvil
+tabs = st.tabs(meses_nombres)
+mes = 1
+for i, tab in enumerate(tabs):
+    if i == datetime.now(tz_sv).month - 1: # Pre-selección del mes actual (opcional)
+        pass 
+    with tab:
+        mes = i + 1
+        # El nombre del mes que saldrá arriba del calendario con las llamas
+        mes_visual = f"🔥 {meses_completos[i]} 🔥"
 
 # --- CÁLCULOS ASTRONÓMICOS ---
 ts = api.load.timescale()
@@ -87,9 +108,9 @@ t_equi, y_equi = almanac.find_discrete(t0, t1, almanac.seasons(eph))
 equi_dict = {ti.astimezone(tz_sv).day: yi for ti, yi in zip(t_equi, y_equi)}
 
 info_utc, info_sv = "", ""
-iconos_cal = {0: "🌑", 1: "🌓", 2: "🌕", 3: "🌗"}
+iconos_fases = {0: "🌑", 1: "🌓", 2: "🌕", 3: "🌗"}
 
-# Construir tabla
+# Construir tabla del calendario
 header = "<tr><th>D</th><th>L</th><th>M</th><th>M</th><th>J</th><th>V</th><th>S</th></tr>"
 filas_html = ""
 cal = calendar.Calendar(firstweekday=6)
@@ -103,7 +124,7 @@ for semana in cal.monthdayscalendar(anio, mes):
             if dia in fases_dict:
                 f_tipo = fases_dict[dia][0]
                 if f_tipo != "CELEB":
-                    icons += iconos_cal.get(f_tipo, "")
+                    icons += iconos_fases.get(f_tipo, "")
                     if f_tipo == 0:
                         t_conj = fases_dict[dia][1]
                         info_utc = t_conj.astimezone(pytz.utc).strftime('%d/%m/%y %H:%M') + " (UTC)"
@@ -116,7 +137,7 @@ for semana in cal.monthdayscalendar(anio, mes):
             
             if dia in fases_dict and fases_dict[dia][0] == "CELEB":
                 icons += "🌘"
-                b_style = "style='border: 1.5px solid #FF8C00; border-radius: 6px;'"
+                b_style = "style='border: 1.5px solid #FF8C00; border-radius: 8px;'"
             
             if dia in equi_dict and equi_dict[dia] == 0: icons += "🌸"
             fila += f"<td {b_style}><div class='n'>{dia}</div><div class='e'>{icons}</div></td>"
@@ -124,21 +145,21 @@ for semana in cal.monthdayscalendar(anio, mes):
 
 # HTML del Calendario
 html_final = f"""
-<div style='text-align:center; color:#FF8C00; font-size:24px; font-weight:bold; margin-bottom:10px;'>
-    {mes_nombre} {anio}
+<div style='text-align:center; color:#FF8C00; font-size:26px; font-weight:bold; margin-bottom:15px; font-family:sans-serif;'>
+    {mes_visual}
 </div>
 <style>
     table {{ width: 100%; border-collapse: collapse; table-layout: fixed; color: white; }}
-    th {{ color: #FF4B4B; font-size: 16px; text-align: center; padding-bottom: 8px; }}
-    td {{ border: 1px solid #333; height: 75px; vertical-align: top; padding: 5px; box-sizing: border-box; }}
-    .n {{ font-size: 18px; font-weight: bold; }}
-    .e {{ font-size: 28px; text-align: center; margin-top: 4px; }}
+    th {{ color: #FF4B4B; font-size: 16px; text-align: center; padding-bottom: 10px; }}
+    td {{ border: 1px solid #333; height: 80px; vertical-align: top; padding: 6px; box-sizing: border-box; }}
+    .n {{ font-size: 18px; font-weight: bold; font-family: sans-serif; }}
+    .e {{ font-size: 30px; text-align: center; margin-top: 5px; }}
 </style>
 <table>{header}{filas_html}</table>
 """
-components.html(html_final, height=500)
+components.html(html_final, height=520)
 
-# 3. Cuadros de Leyenda (Línea por emoji y letras grandes)
+# 3. Cuadros de Leyenda (Diseño Clásico Renovado)
 st.markdown(f"""
 <div class="info-card">
     <div style="color:#FF8C00; font-weight:bold; margin-bottom:15px; font-size:20px; text-align:center;">Significado:</div>
