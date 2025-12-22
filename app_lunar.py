@@ -6,172 +6,171 @@ from datetime import datetime
 import pytz
 import calendar
 
-# Configuración inicial
+# Configuración de página
 st.set_page_config(page_title="Calendario Lunar SV", page_icon="🌙", layout="wide")
+
+# Inicializar el mes en la memoria si no existe
+if 'mes_id' not in st.session_state:
+    st.session_state.mes_id = datetime.now(pytz.timezone('America/El_Salvador')).month - 1
 
 # Datos El Salvador
 tz_sv = pytz.timezone('America/El_Salvador')
 loc_sv = wgs84.latlon(13.689, -89.187)
 hoy_sv = datetime.now(tz_sv)
 
-# --- ESTILOS CSS DEFINITIVOS ---
+# --- ESTILOS CSS REFORZADOS ---
 st.markdown("""
     <style>
-    /* Ocultar etiquetas originales pequeñas */
+    /* Ocultar etiquetas originales */
     div[data-testid="stNumberInput"] label { display: none !important; }
     
-    /* Crear etiquetas GRANDES personalizadas */
     .custom-label {
-        font-size: 28px !important; 
+        font-size: 30px !important; 
         color: #FF8C00 !important;
         font-weight: bold !important;
         text-align: center;
-        margin-bottom: 5px;
-        margin-top: 15px;
+        margin: 20px 0 10px 0;
     }
     
-    .main-title { text-align: center; color: white; font-size: 32px; font-weight: bold; margin-bottom: 20px; }
+    .main-title { text-align: center; color: white; font-size: 36px; font-weight: bold; }
 
-    /* Centrar selectores */
-    div[data-testid="stNumberInput"] { width: 180px !important; margin: 0 auto !important; }
-    input { font-size: 26px !important; font-weight: bold !important; text-align: center !important; color: white !important; }
+    /* Selector de Año */
+    div[data-testid="stNumberInput"] { width: 220px !important; margin: 0 auto !important; }
+    input { font-size: 30px !important; font-weight: bold !important; text-align: center !important; }
 
-    /* Barra de Meses */
-    .stTabs [data-baseweb="tab-list"] { gap: 8px; }
+    /* BOTONES DE MESES (MÁS GRANDES Y VISIBLES) */
+    .stTabs [data-baseweb="tab-list"] { gap: 10px; justify-content: center; }
     .stTabs [data-baseweb="tab"] {
-        height: 50px !important;
+        height: 75px !important;
         background-color: #1a1a1a;
-        border-radius: 8px;
+        border-radius: 12px;
         color: #eee;
-        font-size: 20px !important; 
+        font-size: 24px !important; 
         font-weight: bold;
-        padding: 0 15px !important;
+        padding: 0 20px !important;
+        border: 1px solid #444;
     }
-    .stTabs [aria-selected="true"] { border: 1.5px solid #FF8C00 !important; color: #FF8C00 !important; }
+    .stTabs [aria-selected="true"] { 
+        border: 2px solid #FF8C00 !important; 
+        color: #FF8C00 !important;
+        background-color: rgba(255, 140, 0, 0.15) !important;
+    }
 
-    /* Leyendas y Tarjetas */
+    /* Tarjetas de Información */
     .info-card {
-        border: 1.2px solid #444;
+        border: 1.5px solid #444;
         border-radius: 15px;
         background-color: #1a1a1a;
-        padding: 15px;
+        padding: 20px;
         margin: 10px auto;
-        max-width: 450px;
+        max-width: 500px;
     }
-    .info-item { font-size: 18px; color: #eee; margin-bottom: 10px; display: flex; align-items: center; }
-    .emoji-span { font-size: 24px; margin-right: 12px; }
+    .info-item { font-size: 20px; color: #eee; margin-bottom: 12px; display: flex; align-items: center; }
+    .emoji-span { font-size: 28px; margin-right: 15px; }
     </style>
     """, unsafe_allow_html=True)
 
 st.markdown("<h1 class='main-title'>🌙 Calendario Lunar</h1>", unsafe_allow_html=True)
 
-# 1. Selector de Año con etiqueta manual grande
+# 1. Año (Con etiqueta grande)
 st.markdown("<p class='custom-label'>Año:</p>", unsafe_allow_html=True)
-anio = st.number_input("Anio_Hidden", min_value=2024, max_value=2030, value=hoy_sv.year)
+anio = st.number_input("Año_Hidden", min_value=2024, max_value=2030, value=hoy_sv.year)
 
-# 2. Selector de Mes con Tabs
+# 2. Selector de Mes (Corregido para que cambie)
 st.markdown("<p class='custom-label'>Mes:</p>", unsafe_allow_html=True)
 meses_nombres = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"]
 meses_completos = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"]
 
-# Detectar mes por defecto
-default_tab = hoy_sv.month - 1
+# Usamos st.tabs pero guardamos la elección en session_state
 tabs = st.tabs(meses_nombres)
+mes_sel = st.session_state.mes_id + 1 # Por defecto el actual
 
-mes_sel = 1
 for i, tab in enumerate(tabs):
     with tab:
+        if st.session_state.mes_id != i:
+            st.session_state.mes_id = i
+            st.rerun() # Esto fuerza el cambio inmediato del calendario
         mes_sel = i + 1
-        nombre_mes_visual = meses_completos[i]
+        nombre_mes = meses_completos[i]
 
-# --- CÁLCULOS (Usando mes_sel) ---
+# --- CÁLCULOS ASTRONÓMICOS ---
 ts = api.load.timescale()
 eph = api.load('de421.bsp')
 t0 = ts.from_datetime(tz_sv.localize(datetime(anio, mes_sel, 1)))
-ultimo_dia = calendar.monthrange(anio, mes_sel)[1]
-t1 = ts.from_datetime(tz_sv.localize(datetime(anio, mes_sel, ultimo_dia, 23, 59)))
+ult_dia = calendar.monthrange(anio, mes_sel)[1]
+t1 = ts.from_datetime(tz_sv.localize(datetime(anio, mes_sel, ult_dia, 23, 59)))
 
-t_fases, y_fases = almanac.find_discrete(t0, t1, almanac.moon_phases(eph))
-fases_dict = {ti.astimezone(tz_sv).day: [yi, ti.astimezone(tz_sv)] for ti, yi in zip(t_fases, y_fases)}
+f_ev, f_ty = almanac.find_discrete(t0, t1, almanac.moon_phases(eph))
+datos_luna = {ti.astimezone(tz_sv).day: [yi, ti.astimezone(tz_sv)] for ti, yi in zip(f_ev, f_ty)}
 
-info_utc, info_sv = "---", "---"
-iconos_fases = {0: "🌑", 1: "🌓", 2: "🌕", 3: "🌗"}
+res_utc, res_sv = "---", "---"
+iconos = {0: "🌑", 1: "🌓", 2: "🌕", 3: "🌗"}
 
-# Construir tabla
-header = "<tr><th>D</th><th>L</th><th>M</th><th>M</th><th>J</th><th>V</th><th>S</th></tr>"
+# Generar HTML de la tabla
 filas_html = ""
-cal = calendar.Calendar(firstweekday=6)
-
-for semana in cal.monthdayscalendar(anio, mes_sel):
+for semana in calendar.Calendar(firstweekday=6).monthdayscalendar(anio, mes_sel):
     fila = "<tr>"
     for dia in semana:
         if dia == 0: fila += "<td></td>"
         else:
-            icons, b_style = "", ""
-            if dia in fases_dict:
-                f_tipo = fases_dict[dia][0]
-                icons += iconos_fases.get(f_tipo, "")
-                if f_tipo == 0: # LUNA NUEVA
-                    t_conj = fases_dict[dia][1]
-                    info_utc = t_conj.astimezone(pytz.utc).strftime('%d/%m/%y %H:%M')
-                    info_sv = t_conj.strftime('%d/%m/%y %I:%M %p')
-                    # Cálculo de celebración
-                    t_s0, t_s1 = ts.from_datetime(t_conj.replace(hour=0, minute=0)), ts.from_datetime(t_conj.replace(hour=23, minute=59))
+            txt_i, b_style = "", ""
+            if dia in datos_luna:
+                tipo = datos_luna[dia][0]
+                txt_i = iconos.get(tipo, "")
+                if tipo == 0: # Luna Nueva
+                    t_c = datos_luna[dia][1]
+                    res_utc = t_c.astimezone(pytz.utc).strftime('%d/%m/%y %H:%M')
+                    res_sv = t_c.strftime('%d/%m/%y %I:%M %p')
+                    # Cálculo celebración
+                    t_s0, t_s1 = ts.from_datetime(t_c.replace(hour=0, minute=0)), ts.from_datetime(t_c.replace(hour=23, minute=59))
                     t_s, y_s = almanac.find_discrete(t_s0, t_s1, almanac.sunrise_sunset(eph, loc_sv))
-                    atardecer = next((ti.astimezone(tz_sv) for ti, yi in zip(t_s, y_s) if yi == 0), t_conj.replace(hour=17, minute=45))
-                    target = dia + 1 if t_conj < atardecer else dia + 2
-                    if target <= ultimo_dia: fases_dict[target] = ["CELEB", None]
-            
-            # Bordes finos 1.2px
+                    atardecer = next((ti.astimezone(tz_sv) for ti, yi in zip(t_s, y_s) if yi == 0), t_c.replace(hour=17, 45))
+                    target = dia + 1 if t_c < atardecer else dia + 2
+                    if target <= ult_dia: datos_luna[target] = ["CELEB", None]
+
             if dia == hoy_sv.day and mes_sel == hoy_sv.month and anio == hoy_sv.year:
-                b_style = "border: 1.2px solid #00FF7F; background-color: rgba(0, 255, 127, 0.1);"
-            elif dia in fases_dict and fases_dict[dia][0] == "CELEB":
-                icons += "🌘"
-                b_style = "border: 1.2px solid #FF8C00;"
+                b_style = "border: 2.2px solid #00FF7F; background-color: rgba(0, 255, 127, 0.1);"
+            elif dia in datos_luna and datos_luna[dia][0] == "CELEB":
+                txt_i = "🌘"
+                b_style = "border: 2.2px solid #FF8C00;"
             
-            fila += f"<td class='day-cell' style='{b_style}' onclick='selD(this)'><div class='n'>{dia}</div><div class='e'>{icons}</div></td>"
+            fila += f"<td><div class='n'>{dia}</div><div class='e'>{txt_i}</div></td>"
     filas_html += fila + "</tr>"
 
 # Render de Tabla
 html_final = f"""
-<div style='text-align:center; color:#FF8C00; font-size:26px; font-weight:bold; margin-bottom:10px;'>{nombre_mes_visual} {anio}</div>
+<div style='text-align:center; color:#FF8C00; font-size:32px; font-weight:bold; margin-bottom:15px;'>{nombre_mes} {anio}</div>
 <style>
-    table {{ width: 100%; border-collapse: collapse; table-layout: fixed; color: white; font-family: sans-serif; }}
-    th {{ color: #FF4B4B; font-size: 15px; padding-bottom: 8px; }}
-    td {{ border: 1px solid #333; height: 80px; vertical-align: top; padding: 5px; box-sizing: border-box; }}
-    .n {{ font-size: 18px; font-weight: bold; }}
-    .e {{ font-size: 30px; text-align: center; margin-top: 4px; }}
-    .selected-day {{ background-color: #333 !important; }}
+    table {{ width: 100%; border-collapse: collapse; color: white; table-layout: fixed; }}
+    th {{ color: #FF4B4B; padding-bottom: 10px; font-size: 18px; }}
+    td {{ border: 1px solid #444; height: 95px; vertical-align: top; padding: 8px; }}
+    .n {{ font-size: 22px; font-weight: bold; }}
+    .e {{ font-size: 38px; text-align: center; margin-top: 5px; }}
 </style>
-<table>{header}{filas_html}</table>
-<script>
-function selD(e) {{
-    var cs = document.getElementsByClassName('day-cell');
-    for (var i=0; i<cs.length; i++) {{ cs[i].classList.remove('selected-day'); }}
-    e.classList.add('selected-day');
-}}
-</script>
+<table>
+    <tr><th>D</th><th>L</th><th>M</th><th>M</th><th>J</th><th>V</th><th>S</th></tr>
+    {filas_html}
+</table>
 """
-components.html(html_final, height=520)
+components.html(html_final, height=620)
 
-# 3. LEYENDAS Y DATOS (Recuperados)
-col1, col2 = st.columns(2)
-with col1:
+# 3. Paneles de Información
+c1, c2 = st.columns(2)
+with c1:
     st.markdown(f"""
     <div class="info-card">
-        <div style="color:#FF8C00; font-weight:bold; margin-bottom:10px; font-size:18px;">Simbología:</div>
-        <div class="info-item"><span style="width:15px; height:15px; border:1.2px solid #00FF7F; display:inline-block; margin-right:10px;"></span> Hoy</div>
+        <div style="color:#FF8C00; font-weight:bold; margin-bottom:15px; font-size:22px;">Simbología:</div>
+        <div class="info-item"><span style="width:20px; height:20px; border:2.2px solid #00FF7F; display:inline-block; margin-right:15px;"></span> Hoy</div>
         <div class="info-item"><span class="emoji-span">🌑</span> Luna Nueva</div>
         <div class="info-item"><span class="emoji-span">🌘</span> Celebración</div>
         <div class="info-item"><span class="emoji-span">🌕</span> Luna Llena</div>
     </div>
     """, unsafe_allow_html=True)
-
-with col2:
+with c2:
     st.markdown(f"""
     <div class="info-card">
-        <div style="color:#FF8C00; font-weight:bold; margin-bottom:10px; font-size:18px;">Conjunción:</div>
-        <div class="info-item"><span class="emoji-span">🌎</span> {info_utc} (UTC)</div>
-        <div class="info-item"><span class="emoji-span">📍</span> {info_sv} (SV)</div>
+        <div style="color:#FF8C00; font-weight:bold; margin-bottom:15px; font-size:22px;">Conjunción:</div>
+        <div class="info-item"><span class="emoji-span">🌎</span> {res_utc} (UTC)</div>
+        <div class="info-item"><span class="emoji-span">📍</span> {res_sv} (SV)</div>
     </div>
     """, unsafe_allow_html=True)
