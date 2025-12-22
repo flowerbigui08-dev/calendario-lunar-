@@ -12,47 +12,72 @@ st.set_page_config(page_title="Calendario Lunar", page_icon="🌙", layout="wide
 tz_sv = pytz.timezone('America/El_Salvador')
 loc_sv = wgs84.latlon(13.689, -89.187)
 
-st.title("🌙 Calendario Lunar")
+# --- TÍTULO CENTRADO ---
+st.markdown("<h1 style='text-align: center; color: white;'>🌙 Calendario Lunar</h1>", unsafe_allow_html=True)
 
-# --- 1. SELECTOR DE AÑO (NÚMEROS MÁS GRANDES) ---
+# --- 1. SELECTOR DE AÑO (CON MÁS ESPACIO) ---
 st.markdown("""
     <style>
-    .big-font {font-size:22px !important; font-weight: bold; color: #FF8C00; margin-bottom: -10px;}
-    input {font-size: 20px !important; font-weight: bold !important;}
+    .big-font {
+        font-size:22px !important; 
+        font-weight: bold; 
+        color: #FF8C00; 
+        margin-top: 20px !important;
+        margin-bottom: 10px !important;
+        text-align: center;
+    }
+    /* Centrar el input de número */
+    div[data-testid="stNumberInput"] {
+        width: 60% !important;
+        margin: 0 auto !important;
+    }
+    input {font-size: 22px !important; font-weight: bold !important; text-align: center !important;}
     </style>
     """, unsafe_allow_html=True)
+
 st.markdown('<p class="big-font">Selecciona el Año:</p>', unsafe_allow_html=True)
 anio = st.number_input("", min_value=2024, max_value=2030, value=datetime.now(tz_sv).year, label_visibility="collapsed")
 
-# --- 2. BOTONERA DE MESES (3 FILAS DE 4 PARA MÁS ANCHO) ---
-meses_abr = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"]
-if 'mes_sel' not in st.session_state:
-    st.session_state.mes_sel = datetime.now(tz_sv).month
-
-st.markdown('<p class="big-font" style="margin-top:15px;">Selecciona el Mes:</p>', unsafe_allow_html=True)
+# --- 2. BOTONERA DE MESES (CENTRADA Y ESPACIOSA) ---
+st.markdown('<p class="big-font" style="margin-top:30px !important;">Selecciona el Mes:</p>', unsafe_allow_html=True)
 
 st.markdown("""
     <style>
-    div[data-testid="stHorizontalBlock"] {
+    /* Contenedor de botones centrado */
+    [data-testid="stHorizontalBlock"] {
+        justify-content: center !important;
         display: grid !important;
-        grid-template-columns: repeat(4, 1fr) !important; /* 4 columnas para más ancho */
-        gap: 8px !important;
+        grid-template-columns: repeat(4, 1fr) !important;
+        gap: 12px !important;
+        max-width: 500px !important;
+        margin: 0 auto !important;
     }
     button[kind="secondary"] {
-        border: 0.8px solid #FF8C00 !important;
-        height: 48px !important;
-        font-size: 15px !important;
+        border: 1px solid #FF8C00 !important;
+        height: 50px !important;
+        font-size: 16px !important;
         font-weight: bold !important;
         color: white !important;
         background-color: transparent !important;
+        border-radius: 10px !important;
     }
-    .info-card { border: 1px solid #444; padding: 15px; border-radius: 8px; background-color: #1a1a1a; margin-bottom: 15px; }
+    .info-card { 
+        border: 1px solid #444; 
+        padding: 15px; 
+        border-radius: 8px; 
+        background-color: #1a1a1a; 
+        margin-top: 10px !important; /* Espacio sobre el cuadro */
+    }
     .info-item { font-size: 18px; color: #ddd; margin-bottom: 10px; display: flex; align-items: center; font-family: sans-serif; }
     .emoji-big { font-size: 24px; margin-right: 12px; }
     </style>
     """, unsafe_allow_html=True)
 
-# Dibujar botones en 3 filas de 4
+# Dibujar botones
+meses_abr = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"]
+if 'mes_sel' not in st.session_state:
+    st.session_state.mes_sel = datetime.now(tz_sv).month
+
 for r in range(3):
     cols = st.columns(4)
     for c in range(4):
@@ -78,6 +103,7 @@ info_utc, info_sv = "", ""
 nombres_fases = {0: "🌑", 1: "🌓", 2: "🌕", 3: "🌗"}
 meses_nombres = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"]
 
+# CABECERA CON COLOR ROSADO (Días de la semana)
 header = "<tr><th>D</th><th>L</th><th>M</th><th>M</th><th>J</th><th>V</th><th>S</th></tr>"
 filas_html = ""
 cal = calendar.Calendar(firstweekday=6)
@@ -87,8 +113,7 @@ for semana in cal.monthdayscalendar(anio, mes):
     for dia in semana:
         if dia == 0: fila += "<td></td>"
         else:
-            icons = ""
-            estilo_celda = ""
+            icons, estilo_celda = "", ""
             if dia in fases_dict:
                 f_tipo = fases_dict[dia][0]
                 if f_tipo != "CELEB": 
@@ -97,8 +122,7 @@ for semana in cal.monthdayscalendar(anio, mes):
                         t_conj = fases_dict[dia][1]
                         info_utc = f"{t_conj.astimezone(pytz.utc).strftime('%d/%m/%y %H:%M')} (UTC)"
                         info_sv = f"{t_conj.strftime('%d/%m/%y %I:%M %p')} (SV)"
-                        t_s0 = ts.from_datetime(t_conj.replace(hour=0, minute=0))
-                        t_s1 = ts.from_datetime(t_conj.replace(hour=23, minute=59))
+                        t_s0, t_s1 = ts.from_datetime(t_conj.replace(hour=0, minute=0)), ts.from_datetime(t_conj.replace(hour=23, minute=59))
                         t_s, y_s = almanac.find_discrete(t_s0, t_s1, almanac.sunrise_sunset(eph, loc_sv))
                         atardecer = next((ti.astimezone(tz_sv) for ti, yi in zip(t_s, y_s) if yi == 0), t_conj.replace(hour=17, minute=45))
                         target_day = dia + 1 if t_conj < atardecer else dia + 2
@@ -106,31 +130,30 @@ for semana in cal.monthdayscalendar(anio, mes):
             
             if dia in fases_dict and fases_dict[dia][0] == "CELEB":
                 icons += "🌘"
-                # BORDE NARANJA PARA DÍA DE CELEBRACIÓN
-                estilo_celda = "style='border: 1.5px solid #FF8C00; border-radius: 4px;'"
+                estilo_celda = "style='border: 1.5px solid #FF8C00; border-radius: 6px;'"
             
             if dia in equi_dict and equi_dict[dia] == 0: icons += "🌸"
             fila += f"<td {estilo_celda}><div class='n'>{dia}</div><div class='e'>{icons}</div></td>"
     filas_html += fila + "</tr>"
 
-# Calendario HTML
+# Calendario HTML con Días Rosados
 html_final = f"""
-<div style='text-align:center; color:#FF8C00; font-size:26px; font-weight:bold; margin-bottom:10px; font-family:sans-serif;'>
+<div style='text-align:center; color:#FF8C00; font-size:28px; font-weight:bold; margin-bottom:15px; font-family:sans-serif;'>
     {meses_nombres[mes-1]} {anio}
 </div>
 <style>
     table {{ width: 100%; border-collapse: collapse; table-layout: fixed; color: white; }}
-    th {{ color: #888; font-size: 14px; text-align: center; padding-bottom: 5px; }}
-    td {{ border: 1px solid #333; height: 80px; vertical-align: top; padding: 5px; }}
+    th {{ color: #FF4B4B; font-size: 16px; text-align: center; padding-bottom: 8px; }} /* Color rosado botones */
+    td {{ border: 1px solid #333; height: 85px; vertical-align: top; padding: 6px; }}
     .n {{ font-size: 18px; font-weight: bold; font-family: sans-serif; }}
-    .e {{ font-size: 30px; text-align: center; margin-top: 5px; line-height: 1; }}
+    .e {{ font-size: 32px; text-align: center; margin-top: 5px; line-height: 1; }}
 </style>
 <table>{header}{filas_html}</table>
 """
-components.html(html_final, height=560)
+components.html(html_final, height=600)
 
-# --- 3. LEYENDA (VERTICAL) ---
-st.markdown('<p class="big-font">Significado de Símbolos:</p>', unsafe_allow_html=True)
+# --- 3. LEYENDA (CON MÁS ESPACIADO) ---
+st.markdown('<p class="big-font" style="margin-top:30px !important;">Significado de Símbolos:</p>', unsafe_allow_html=True)
 st.markdown(f"""
 <div class="info-card">
     <div class="info-item"><span class="emoji-big">🌑</span> Luna Nueva (Conjunción)</div>
@@ -140,7 +163,7 @@ st.markdown(f"""
 </div>
 """, unsafe_allow_html=True)
 
-st.markdown('<p class="big-font">Datos de la Conjunción:</p>', unsafe_allow_html=True)
+st.markdown('<p class="big-font" style="margin-top:30px !important;">Datos de la Conjunción:</p>', unsafe_allow_html=True)
 st.markdown(f"""
 <div class="info-card">
     <div class="info-item">🌎 {info_utc if info_utc else 'Sin conjunción este mes'}</div>
@@ -148,4 +171,4 @@ st.markdown(f"""
 </div>
 """, unsafe_allow_html=True)
 
-st.sidebar.caption("v20.0 - Borde Dorado Edit")
+st.sidebar.caption("v21.0 - Perfect Finish Edit")
