@@ -6,7 +6,6 @@ from datetime import datetime
 import pytz
 import calendar
 
-# Configuración de página
 st.set_page_config(page_title="Calendario Lunar SV", page_icon="🌙", layout="wide")
 
 # Datos El Salvador
@@ -25,32 +24,17 @@ st.markdown("""
         margin-bottom: 10px !important;
         text-align: center;
     }
-    /* Centrar el input de año */
     div[data-testid="stNumberInput"] { width: 160px !important; margin: 0 auto !important; }
     input { font-size: 24px !important; font-weight: bold !important; text-align: center !important; }
 
-    /* Estilo de los botones de mes */
-    button[kind="secondary"] {
-        border: 1.8px solid #FF8C00 !important;
-        height: 48px !important;
-        font-size: 16px !important;
-        font-weight: bold !important;
-        color: white !important;
-        background-color: transparent !important;
-        border-radius: 10px !important;
-        width: 100% !important;
-    }
-
-    /* Cuadros de información de abajo */
+    /* Estilo para las tarjetas de información */
     .info-card { 
         border: 1px solid #444; 
-        padding: 15px; 
+        padding: 18px; 
         border-radius: 12px; 
         background-color: #1a1a1a; 
-        margin-top: 10px !important;
+        margin: 10px auto !important;
         max-width: 450px;
-        margin-left: auto;
-        margin-right: auto;
     }
     .info-item { font-size: 17px; color: #ddd; margin-bottom: 8px; display: flex; align-items: center; }
     </style>
@@ -62,27 +46,24 @@ st.markdown("<h1 class='main-title'>🌙 Calendario Lunar</h1>", unsafe_allow_ht
 st.markdown('<p class="big-font">Año:</p>', unsafe_allow_html=True)
 anio = st.number_input("", min_value=2024, max_value=2030, value=datetime.now(tz_sv).year, label_visibility="collapsed")
 
-# 2. Selector de Mes (Centrado con columnas vacías a los lados)
+# 2. Selector de Mes (Forzando 3 columnas reales)
 st.markdown('<p class="big-font">Selecciona el Mes:</p>', unsafe_allow_html=True)
-meses_nombres = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"]
 meses_abr = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"]
+meses_nombres = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"]
 
 if 'mes_sel' not in st.session_state:
     st.session_state.mes_sel = datetime.now(tz_sv).month
 
-# Crear una rejilla centrada para los botones
-col_esp1, col_btns, col_esp2 = st.columns([0.1, 0.8, 0.1])
-with col_btns:
-    for r in range(4):
-        cols = st.columns(3)
-        for c in range(3):
-            idx = r * 3 + c
-            if cols[c].button(meses_abr[idx], key=f"m_{idx}"):
-                st.session_state.mes_sel = idx + 1
+# Usamos st.columns pero con un truco para que no se apilen en móvil
+cols = st.columns(3)
+for i, nombre in enumerate(meses_abr):
+    with cols[i % 3]:
+        if st.button(nombre, key=f"btn_{i}", use_container_width=True):
+            st.session_state.mes_sel = i + 1
 
 mes = st.session_state.mes_sel
 
-# --- LÓGICA ASTRONÓMICA ---
+# --- CÁLCULOS ---
 ts = api.load.timescale()
 eph = api.load('de421.bsp')
 t0 = ts.from_datetime(tz_sv.localize(datetime(anio, mes, 1)))
@@ -97,7 +78,7 @@ equi_dict = {ti.astimezone(tz_sv).day: yi for ti, yi in zip(t_equi, y_equi)}
 info_utc, info_sv = "", ""
 iconos_fases = {0: "🌑", 1: "🌓", 2: "🌕", 3: "🌗"}
 
-# Generar Tabla del Calendario
+# Tabla del Calendario
 header = "<tr><th>D</th><th>L</th><th>M</th><th>M</th><th>J</th><th>V</th><th>S</th></tr>"
 filas_html = ""
 cal = calendar.Calendar(firstweekday=6)
@@ -112,12 +93,11 @@ for semana in cal.monthdayscalendar(anio, mes):
                 f_tipo = fases_dict[dia][0]
                 if f_tipo != "CELEB":
                     icons += iconos_fases.get(f_tipo, "")
-                    if f_tipo == 0: # Luna Nueva
+                    if f_tipo == 0:
                         t_conj = fases_dict[dia][1]
                         info_utc = f"{t_conj.astimezone(pytz.utc).strftime('%d/%m/%y %H:%M')} (UTC)"
                         info_sv = f"{t_conj.strftime('%d/%m/%y %I:%M %p')} (SV)"
-                        t_s0 = ts.from_datetime(t_conj.replace(hour=0, minute=0))
-                        t_s1 = ts.from_datetime(t_conj.replace(hour=23, minute=59))
+                        t_s0, t_s1 = ts.from_datetime(t_conj.replace(hour=0, minute=0)), ts.from_datetime(t_conj.replace(hour=23, minute=59))
                         t_s, y_s = almanac.find_discrete(t_s0, t_s1, almanac.sunrise_sunset(eph, loc_sv))
                         atardecer = next((ti.astimezone(tz_sv) for ti, yi in zip(t_s, y_s) if yi == 0), t_conj.replace(hour=17, minute=45))
                         target_day = dia + 1 if t_conj < atardecer else dia + 2
@@ -131,7 +111,7 @@ for semana in cal.monthdayscalendar(anio, mes):
             fila += f"<td {b_style}><div class='n'>{dia}</div><div class='e'>{icons}</div></td>"
     filas_html += fila + "</tr>"
 
-# HTML Final
+# Render de la Tabla
 html_final = f"""
 <div style='text-align:center; color:#FF8C00; font-size:26px; font-weight:bold; margin-bottom:10px; font-family:sans-serif;'>
     {meses_nombres[mes-1]} {anio}
@@ -147,15 +127,15 @@ html_final = f"""
 """
 components.html(html_final, height=540)
 
-# 3. Leyendas (Bien pegaditas y grandes)
-st.markdown('<p class="big-font" style="margin-top:0px !important;">Significado:</p>', unsafe_allow_html=True)
+# 3. Leyendas (Recuperando el diseño de tarjetas)
+st.markdown('<p class="big-font" style="margin-top:0px !important;">Significado de Símbolos:</p>', unsafe_allow_html=True)
 st.markdown(f"""
 <div class="info-card">
-    <div class="info-item">🌑 Luna Nueva | 🌘 Celebración</div>
-    <div class="info-item">🌸 Equinoccio | 🌕 Luna Llena</div>
-</div>
-<div class="info-card">
-    <div class="info-item">🌎 {info_utc if info_utc else '---'}</div>
-    <div class="info-item">📍 {info_sv if info_sv else '---'}</div>
+    <div class="info-item">🌑 Luna Nueva (Conjunción)</div>
+    <div class="info-item">🌘 Día de Celebración</div>
+    <div class="info-item">🌸 Equinoccio de Primavera</div>
+    <div class="info-item">🌕 Luna Llena</div>
 </div>
 """, unsafe_allow_html=True)
+
+st.markdown('<p class="big-font" style="margin-top:5px !important;">Datos de la Conjunción:</p>', unsafe_
