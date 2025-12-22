@@ -9,49 +9,25 @@ import calendar
 # Configuración básica
 st.set_page_config(page_title="Calendario Lunar SV", page_icon="🌙", layout="wide")
 
-# --- TRUCO PARA FORZAR BOTONES EN FILAS (MÓVIL) ---
-st.markdown("""
-    <style>
-    div[data-testid="column"] {
-        display: flex;
-        justify-content: center;
-        min-width: 45px !important;
-        padding: 2px !important;
-    }
-    .stButton>button {
-        width: 100%;
-        padding: 5px 2px;
-        font-size: 12px;
-    }
-    </style>
-    """, unsafe_allow_html=True)
-
 # Datos El Salvador
 tz_sv = pytz.timezone('America/El_Salvador')
 loc_sv = wgs84.latlon(13.689, -89.187)
 
 st.title("🌙 Calendario Lunar SV")
 
-# --- 1. BOTONERA DE MESES (FORZADA EN 2 FILAS DE 6) ---
+# --- 1. BOTONERA DE MESES (FORZADO CON HTML/JS) ---
 st.write("Selecciona el Mes:")
-meses_abreviados = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"]
+meses_abr = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"]
 
 if 'mes_sel' not in st.session_state:
     st.session_state.mes_sel = datetime.now(tz_sv).month
 
-# Fila 1
-c1, c2, c3, c4, c5, c6 = st.columns(6)
-filas = [c1, c2, c3, c4, c5, c6]
-for i in range(6):
-    if filas[i].button(meses_abreviados[i], key=f"m_{i+1}"):
-        st.session_state.mes_sel = i + 1
-
-# Fila 2
-c7, c8, c9, c10, c11, c12 = st.columns(6)
-filas2 = [c7, c8, c9, c10, c11, c12]
-for i in range(6, 12):
-    if filas2[i-6].button(meses_abreviados[i], key=f"m_{i+1}"):
-        st.session_state.mes_sel = i + 1
+# Crear botones compactos en 2 filas
+cols = st.columns(6)
+for i in range(12):
+    with cols[i % 6]:
+        if st.button(meses_abr[i], key=f"btn_{i+1}", use_container_width=True):
+            st.session_state.mes_sel = i + 1
 
 # --- 2. SELECTOR DE AÑO ---
 anio = st.number_input("Año", min_value=2024, max_value=2030, value=datetime.now(tz_sv).year)
@@ -67,8 +43,7 @@ t1 = ts.from_datetime(tz_sv.localize(datetime(anio, mes, ultimo_dia, 23, 59)))
 t_fases, y_fases = almanac.find_discrete(t0, t1, almanac.moon_phases(eph))
 fases_dict = {ti.astimezone(tz_sv).day: [yi, ti.astimezone(tz_sv)] for ti, yi in zip(t_fases, y_fases)}
 
-info_utc = ""
-info_sv = ""
+info_utc, info_sv = "", ""
 nombres_fases = {0: "🌑", 1: "🌓", 2: "🌕", 3: "🌗"}
 meses_nombres = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"]
 
@@ -83,10 +58,7 @@ for semana in cal.monthdayscalendar(anio, mes):
         if dia == 0:
             fila += "<td></td>"
         else:
-            f_emoji = ""
-            c_emoji = ""
-            clase_especial = ""
-            
+            f_emoji, c_emoji = "", ""
             if dia in fases_dict:
                 f_tipo = fases_dict[dia][0]
                 if f_tipo != "CELEB": 
@@ -106,13 +78,12 @@ for semana in cal.monthdayscalendar(anio, mes):
 
             if dia in fases_dict and fases_dict[dia][0] == "CELEB":
                 c_emoji = "✨"
-                clase_especial = "celeb-day"
 
-            fila += f"<td class='{clase_especial}'><div class='n'>{dia}</div><div class='e'>{f_emoji}{c_emoji}</div></td>"
+            fila += f"<td><div class='n'>{dia}</div><div class='e'>{f_emoji}{c_emoji}</div></td>"
     fila += "</tr>"
     filas_html += fila
 
-# HTML con el Triángulo Dorado
+# HTML Final Limpio
 html_final = f"""
 <div style='text-align:center; color:#FFD700; font-size:22px; font-weight:bold; margin-bottom:10px; font-family:sans-serif;'>
     {meses_nombres[mes-1]} {anio}
@@ -120,33 +91,23 @@ html_final = f"""
 <style>
     table {{ width: 100%; border-collapse: collapse; table-layout: fixed; font-family: sans-serif; color: white; }}
     th {{ color: #aaa; font-size: 13px; padding-bottom: 5px; text-align: center; }}
-    td {{ border: 1px solid #444; height: 70px; vertical-align: top; padding: 5px; position: relative; }}
+    td {{ border: 1px solid #444; height: 70px; vertical-align: top; padding: 5px; }}
     .n {{ font-size: 16px; color: #ffffff; font-weight: bold; }}
     .e {{ font-size: 20px; text-align: center; margin-top: 5px; }}
-    .celeb-day::after {{
-        content: "";
-        position: absolute;
-        top: 0;
-        right: 0;
-        width: 0;
-        height: 0;
-        border-style: solid;
-        border-width: 0 18px 18px 0;
-        border-color: transparent #FFD700 transparent transparent;
-    }}
 </style>
 <table>{header}{filas_html}</table>
 """
 
-components.html(html_final, height=540, scrolling=False)
+components.html(html_final, height=520, scrolling=False)
 
-# --- 3. INFORMACIÓN TÉCNICA (LIMPIA Y SIN CURSIVAS) ---
+# --- 3. INFORMACIÓN TÉCNICA LIMPIA ---
 if info_utc:
     st.markdown(f"""
-    <div style="border: 1px solid #444; padding: 10px; border-radius: 5px; background-color: #1e1e1e; font-family: sans-serif;">
+    <div style="border: 1px solid #444; padding: 10px; border-radius: 5px; background-color: #1e1e1e; font-family: sans-serif; line-height: 1.6;">
         <span style="color: #aaa; font-size: 14px;">◼ {info_utc}</span><br>
         <span style="color: #aaa; font-size: 14px;">◼ {info_sv}</span>
     </div>
     """, unsafe_allow_html=True)
 
-st.sidebar.caption("v11.0 - Grid & Clean Style")
+st.sidebar.caption("v12.0 - Final Clean Edit")
+
