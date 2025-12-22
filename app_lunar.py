@@ -6,73 +6,59 @@ from datetime import datetime
 import pytz
 import calendar
 
-st.set_page_config(page_title="Calendario Lunar SV", page_icon="🌙", layout="wide")
+st.set_page_config(page_title="Calendario Lunar", page_icon="🌙", layout="wide")
 
 # Datos El Salvador
 tz_sv = pytz.timezone('America/El_Salvador')
 loc_sv = wgs84.latlon(13.689, -89.187)
 
-st.title("🌙 Calendario Lunar SV")
+st.title("🌙 Calendario Lunar")
 
-# --- 1. SELECTOR DE AÑO (MÁS GRANDE) ---
-st.markdown("<style>.big-font {font-size:20px !important; font-weight: bold; color: #FF8C00;}</style>", unsafe_allow_html=True)
+# --- 1. SELECTOR DE AÑO (NÚMEROS MÁS GRANDES) ---
+st.markdown("""
+    <style>
+    .big-font {font-size:22px !important; font-weight: bold; color: #FF8C00; margin-bottom: -10px;}
+    input {font-size: 20px !important; font-weight: bold !important;}
+    </style>
+    """, unsafe_allow_html=True)
 st.markdown('<p class="big-font">Selecciona el Año:</p>', unsafe_allow_html=True)
 anio = st.number_input("", min_value=2024, max_value=2030, value=datetime.now(tz_sv).year, label_visibility="collapsed")
 
-# --- 2. BOTONERA DE MESES (UNIFORME Y ESPACIOSA) ---
+# --- 2. BOTONERA DE MESES (3 FILAS DE 4 PARA MÁS ANCHO) ---
 meses_abr = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"]
 if 'mes_sel' not in st.session_state:
     st.session_state.mes_sel = datetime.now(tz_sv).month
 
 st.markdown('<p class="big-font" style="margin-top:15px;">Selecciona el Mes:</p>', unsafe_allow_html=True)
 
-# CSS para botones uniformes y selector de año
 st.markdown("""
     <style>
     div[data-testid="stHorizontalBlock"] {
         display: grid !important;
-        grid-template-columns: repeat(6, 1fr) !important;
-        gap: 5px !important;
+        grid-template-columns: repeat(4, 1fr) !important; /* 4 columnas para más ancho */
+        gap: 8px !important;
     }
     button[kind="secondary"] {
         border: 0.8px solid #FF8C00 !important;
-        height: 45px !important; /* Más altos para que no se vea apretado */
-        font-size: 13px !important;
+        height: 48px !important;
+        font-size: 15px !important;
         font-weight: bold !important;
         color: white !important;
-        width: 100% !important;
-        display: flex !important;
-        justify-content: center !important;
-        align-items: center !important;
+        background-color: transparent !important;
     }
-    /* Estilo para los cuadros de abajo */
-    .info-card {
-        border: 1px solid #444;
-        padding: 15px;
-        border-radius: 8px;
-        background-color: #1a1a1a;
-        font-family: sans-serif;
-        margin-bottom: 15px;
-    }
-    .info-item {
-        font-size: 18px; /* Texto más grande */
-        color: #ddd;
-        margin-bottom: 8px;
-        display: flex;
-        align-items: center;
-    }
-    .emoji-big {
-        font-size: 24px;
-        margin-right: 12px;
-    }
+    .info-card { border: 1px solid #444; padding: 15px; border-radius: 8px; background-color: #1a1a1a; margin-bottom: 15px; }
+    .info-item { font-size: 18px; color: #ddd; margin-bottom: 10px; display: flex; align-items: center; font-family: sans-serif; }
+    .emoji-big { font-size: 24px; margin-right: 12px; }
     </style>
     """, unsafe_allow_html=True)
 
-cols = st.columns(6)
-for i in range(12):
-    with cols[i % 6]:
-        if st.button(meses_abr[i], key=f"m_{i+1}"):
-            st.session_state.mes_sel = i + 1
+# Dibujar botones en 3 filas de 4
+for r in range(3):
+    cols = st.columns(4)
+    for c in range(4):
+        idx = r * 4 + c
+        if cols[c].button(meses_abr[idx], key=f"m_{idx+1}"):
+            st.session_state.mes_sel = idx + 1
 
 mes = st.session_state.mes_sel
 
@@ -102,6 +88,7 @@ for semana in cal.monthdayscalendar(anio, mes):
         if dia == 0: fila += "<td></td>"
         else:
             icons = ""
+            estilo_celda = ""
             if dia in fases_dict:
                 f_tipo = fases_dict[dia][0]
                 if f_tipo != "CELEB": 
@@ -117,9 +104,13 @@ for semana in cal.monthdayscalendar(anio, mes):
                         target_day = dia + 1 if t_conj < atardecer else dia + 2
                         if target_day <= ultimo_dia: fases_dict[target_day] = ["CELEB", None]
             
-            if dia in fases_dict and fases_dict[dia][0] == "CELEB": icons += "🌘"
+            if dia in fases_dict and fases_dict[dia][0] == "CELEB":
+                icons += "🌘"
+                # BORDE NARANJA PARA DÍA DE CELEBRACIÓN
+                estilo_celda = "style='border: 1.5px solid #FF8C00; border-radius: 4px;'"
+            
             if dia in equi_dict and equi_dict[dia] == 0: icons += "🌸"
-            fila += f"<td><div class='n'>{dia}</div><div class='e'>{icons}</div></td>"
+            fila += f"<td {estilo_celda}><div class='n'>{dia}</div><div class='e'>{icons}</div></td>"
     filas_html += fila + "</tr>"
 
 # Calendario HTML
@@ -138,7 +129,7 @@ html_final = f"""
 """
 components.html(html_final, height=560)
 
-# --- 3. LEYENDA Y DATOS TÉCNICOS (VERTICAL Y GRANDE) ---
+# --- 3. LEYENDA (VERTICAL) ---
 st.markdown('<p class="big-font">Significado de Símbolos:</p>', unsafe_allow_html=True)
 st.markdown(f"""
 <div class="info-card">
@@ -152,9 +143,9 @@ st.markdown(f"""
 st.markdown('<p class="big-font">Datos de la Conjunción:</p>', unsafe_allow_html=True)
 st.markdown(f"""
 <div class="info-card">
-    <div class="info-item" style="font-size: 16px;">📅 {info_utc if info_utc else 'Sin conjunción este mes'}</div>
-    <div class="info-item" style="font-size: 16px;">📍 {info_sv if info_sv else '-'}</div>
+    <div class="info-item">🌎 {info_utc if info_utc else 'Sin conjunción este mes'}</div>
+    <div class="info-item">📍 {info_sv if info_sv else '-'}</div>
 </div>
 """, unsafe_allow_html=True)
 
-st.sidebar.caption("v19.0 - Legibilidad Máxima")
+st.sidebar.caption("v20.0 - Borde Dorado Edit")
