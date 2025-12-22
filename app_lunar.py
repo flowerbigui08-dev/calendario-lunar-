@@ -14,37 +14,37 @@ tz_sv = pytz.timezone('America/El_Salvador')
 loc_sv = wgs84.latlon(13.689, -89.187)
 hoy_sv = datetime.now(tz_sv)
 
-# --- ESTILOS CSS REFORZADOS ---
+# --- ESTILOS CSS REFINADOS ---
 st.markdown("""
     <style>
     .main-title { text-align: center; color: white; font-size: 32px; font-weight: bold; margin-bottom: 15px; }
     
-    /* Etiquetas de Año y Mes */
+    /* Etiquetas de Año y Mes Uniformes */
     .stNumberInput label, .section-label {
-        font-size: 22px !important;
+        font-size: 24px !important; 
         color: #FF8C00 !important;
         font-weight: bold !important;
         text-align: center;
         display: block;
+        margin-bottom: 10px !important;
     }
 
     /* Selector de Año */
-    div[data-testid="stNumberInput"] { width: 170px !important; margin: 0 auto !important; }
+    div[data-testid="stNumberInput"] { width: 180px !important; margin: 0 auto !important; }
     input { font-size: 26px !important; font-weight: bold !important; text-align: center !important; }
 
-    /* BARRA DE MESES MÁS GRANDE */
+    /* BARRA DE MESES REFINADA */
     .stTabs [data-baseweb="tab-list"] {
-        gap: 12px;
+        gap: 10px;
         justify-content: flex-start;
-        padding: 10px 0px;
     }
     .stTabs [data-baseweb="tab"] {
-        height: 60px !important; /* Más alta */
+        height: 55px !important;
         background-color: #1a1a1a;
         border-radius: 10px;
-        padding: 0px 25px !important;
-        color: #ddd;
-        font-size: 20px !important; /* Letra más grande */
+        padding: 0px 20px !important;
+        color: #eee;
+        font-size: 22px !important; 
         font-weight: bold;
     }
     .stTabs [aria-selected="true"] {
@@ -69,9 +69,9 @@ st.markdown("""
 st.markdown("<h1 class='main-title'>🌙 Calendario Lunar</h1>", unsafe_allow_html=True)
 
 # 1. Selector de Año
-anio = st.number_input("Año", min_value=2024, max_value=2030, value=hoy_sv.year)
+anio = st.number_input("Año:", min_value=2024, max_value=2030, value=hoy_sv.year)
 
-# 2. Selector de Mes con Pestañas Gigantes
+# 2. Selector de Mes
 st.markdown("<p class='section-label'>Selecciona el Mes:</p>", unsafe_allow_html=True)
 meses_nombres = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"]
 meses_completos = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"]
@@ -83,7 +83,7 @@ for i, tab in enumerate(tabs):
         mes = i + 1
         mes_visual = meses_completos[i]
 
-# --- CÁLCULOS ---
+# --- CÁLCULOS ASTRONÓMICOS ---
 ts = api.load.timescale()
 eph = api.load('de421.bsp')
 t0 = ts.from_datetime(tz_sv.localize(datetime(anio, mes, 1)))
@@ -98,7 +98,7 @@ equi_dict = {ti.astimezone(tz_sv).day: yi for ti, yi in zip(t_equi, y_equi)}
 info_utc, info_sv = "", ""
 iconos_fases = {0: "🌑", 1: "🌓", 2: "🌕", 3: "🌗"}
 
-# Construir tabla
+# Construir tabla con Script de Selección Única
 header = "<tr><th>D</th><th>L</th><th>M</th><th>M</th><th>J</th><th>V</th><th>S</th></tr>"
 filas_html = ""
 cal = calendar.Calendar(firstweekday=6)
@@ -109,7 +109,6 @@ for semana in cal.monthdayscalendar(anio, mes):
         if dia == 0: fila += "<td></td>"
         else:
             icons, b_style = "", ""
-            # Lógica de fases y celebración
             if dia in fases_dict:
                 f_tipo = fases_dict[dia][0]
                 if f_tipo != "CELEB":
@@ -124,21 +123,26 @@ for semana in cal.monthdayscalendar(anio, mes):
                         target_day = dia + 1 if t_conj < atardecer else dia + 2
                         if target_day <= ultimo_dia: fases_dict[target_day] = ["CELEB", None]
             
-            # MARGENES DE COLORES
-            # Prioridad 1: Día Actual (VERDE)
+            # Estilos de bordes refinados (1.2px)
+            clase_especial = "dia-normal"
             if dia == hoy_sv.day and mes == hoy_sv.month and anio == hoy_sv.year:
-                b_style = "style='border: 2px solid #00FF7F; background-color: rgba(0, 255, 127, 0.1);'"
-            # Prioridad 2: Celebración (NARANJA)
+                b_style = "border: 1.2px solid #00FF7F; background-color: rgba(0, 255, 127, 0.08);"
+                clase_especial = "dia-hoy"
             elif dia in fases_dict and fases_dict[dia][0] == "CELEB":
                 icons += "🌘"
-                b_style = "style='border: 1.5px solid #FF8C00;'"
+                b_style = "border: 1.2px solid #FF8C00;"
+                clase_especial = "dia-celeb"
             
             if dia in equi_dict and equi_dict[dia] == 0: icons += "🌸"
             
-            fila += f"<td {b_style} onclick='this.style.backgroundColor=\"#333\"'><div class='n'>{dia}</div><div class='e'>{icons}</div></td>"
+            # El evento onclick ahora limpia todos los demás antes de marcar el nuevo
+            fila += f"""<td class='{clase_especial} day-cell' style='{b_style}' 
+                        onclick='seleccionarDia(this)'>
+                        <div class='n'>{dia}</div><div class='e'>{icons}</div>
+                        </td>"""
     filas_html += fila + "</tr>"
 
-# Render de Tabla
+# Render de Tabla con JavaScript para la selección única
 html_final = f"""
 <div style='text-align:center; color:#FF8C00; font-size:26px; font-weight:bold; margin-bottom:15px; font-family:sans-serif;'>
     {mes_visual} {anio}
@@ -146,20 +150,33 @@ html_final = f"""
 <style>
     table {{ width: 100%; border-collapse: collapse; table-layout: fixed; color: white; }}
     th {{ color: #FF4B4B; font-size: 16px; text-align: center; padding-bottom: 10px; }}
-    td {{ border: 1px solid #333; height: 85px; vertical-align: top; padding: 6px; box-sizing: border-box; transition: 0.2s; }}
-    td:active {{ background-color: #444 !important; }} /* Efecto al tocar */
+    .day-cell {{ border: 1px solid #333; height: 85px; vertical-align: top; padding: 6px; box-sizing: border-box; transition: background 0.3s; }}
     .n {{ font-size: 19px; font-weight: bold; font-family: sans-serif; }}
     .e {{ font-size: 32px; text-align: center; margin-top: 5px; }}
+    .selected-day {{ background-color: #333 !important; }}
 </style>
-<table>{header}{filas_html}</table>
+
+<table id='moon-calendar'>{header}{filas_html}</table>
+
+<script>
+function seleccionarDia(elemento) {{
+    // 1. Quitar la clase 'selected-day' de todos los demás
+    var celdas = document.getElementsByClassName('day-cell');
+    for (var i = 0; i < celdas.length; i++) {{
+        celdas[i].classList.remove('selected-day');
+    }}
+    // 2. Ponerle la clase solo al que tocamos
+    elemento.classList.add('selected-day');
+}}
+</script>
 """
 components.html(html_final, height=550)
 
-# 3. Leyendas Actualizadas
+# 3. Leyendas
 st.markdown(f"""
 <div class="info-card">
     <div style="color:#FF8C00; font-weight:bold; margin-bottom:15px; font-size:20px; text-align:center;">Simbología:</div>
-    <div class="info-item"><span style="width:25px; height:25px; border:2px solid #00FF7F; display:inline-block; margin-right:15px; border-radius:4px;"></span> Día Actual (Hoy)</div>
+    <div class="info-item"><span style="width:18px; height:18px; border:1.2px solid #00FF7F; display:inline-block; margin-right:15px; border-radius:3px;"></span> Día Actual (Hoy)</div>
     <div class="info-item"><span class="emoji-span">🌑</span> Luna Nueva (Conjunción)</div>
     <div class="info-item"><span class="emoji-span">🌘</span> Día de Celebración</div>
     <div class="info-item"><span class="emoji-span">🌸</span> Equinoccio / Primavera</div>
