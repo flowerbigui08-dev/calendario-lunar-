@@ -8,53 +8,49 @@ import calendar
 
 st.set_page_config(page_title="Calendario Lunar", page_icon="🌙", layout="wide")
 
-# --- CSS PARA FORZAR CENTRADO Y ELIMINAR ESPACIOS LATERALES ---
+# Datos El Salvador
+tz_sv = pytz.timezone('America/El_Salvador')
+loc_sv = wgs84.latlon(13.689, -89.187)
+
+# --- ESTILOS CSS REPARADOS ---
 st.markdown("""
     <style>
-    /* Eliminar el espacio superior y laterales de Streamlit */
-    .block-container {
-        padding-top: 1rem !important;
-        padding-bottom: 0rem !important;
-        padding-left: 1rem !important;
-        padding-right: 1rem !important;
-        max-width: 600px !important;
-        margin: 0 auto !important;
-    }
+    /* Centrar Título Principal */
+    .main-title { text-align: center; color: white; font-size: 38px; font-weight: bold; margin-bottom: 5px; }
     
-    /* Centrar Título */
-    .main-title { text-align: center; color: white; font-size: 34px; font-weight: bold; margin-bottom: 5px; }
-    
-    /* Centrar Selector de Año */
-    div[data-testid="stNumberInput"] { width: 140px !important; margin: 0 auto !important; }
-    input { font-size: 24px !important; font-weight: bold !important; text-align: center !important; }
-
-    /* Etiquetas de Sección Centradas */
+    /* Etiquetas de Selección Centradas */
     .big-font {
-        font-size: 20px !important; 
+        font-size: 22px !important; 
         font-weight: bold; 
         color: #FF8C00; 
-        margin-top: 15px !important;
-        margin-bottom: 8px !important;
+        margin-top: 25px !important;
+        margin-bottom: 12px !important;
         text-align: center;
     }
+    
+    /* Centrar Selector de Año */
+    div[data-testid="stNumberInput"] { width: 160px !important; margin: 0 auto !important; }
+    input { font-size: 24px !important; font-weight: bold !important; text-align: center !important; }
 
-    /* CUADRÍCULA DE BOTONES CENTRADA */
+    /* CUADRÍCULA DE BOTONES CENTRADA (v31) */
     [data-testid="stHorizontalBlock"] {
-        display: flex !important;
         justify-content: center !important;
-        gap: 8px !important;
+        display: flex !important;
+        flex-wrap: wrap !important;
+        max-width: 450px !important;
         margin: 0 auto !important;
+        gap: 10px !important;
     }
     
     div[data-testid="column"] {
-        min-width: 85px !important;
-        flex: 0 0 auto !important;
+        flex: 1 1 28% !important;
+        min-width: 90px !important;
     }
 
     button[kind="secondary"] {
         border: 1.8px solid #FF8C00 !important;
-        height: 42px !important;
-        font-size: 15px !important;
+        height: 48px !important;
+        font-size: 16px !important;
         font-weight: bold !important;
         color: white !important;
         background-color: transparent !important;
@@ -62,44 +58,41 @@ st.markdown("""
         width: 100% !important;
     }
 
-    /* Cuadros de Información */
+    /* Cuadros de Información RESTAURADOS */
     .info-card { 
         border: 1px solid #444; 
-        padding: 12px; 
+        padding: 18px; 
         border-radius: 12px; 
         background-color: #1a1a1a; 
-        margin-top: 5px !important;
-        margin-bottom: 10px !important;
+        margin-top: 15px !important;
+        max-width: 500px;
+        margin-left: auto;
+        margin-right: auto;
     }
-    .info-item { font-size: 16px; color: #ddd; margin-bottom: 5px; display: flex; align-items: center; }
+    .info-item { font-size: 18px; color: #ddd; margin-bottom: 10px; display: flex; align-items: center; }
     </style>
     """, unsafe_allow_html=True)
-
-# Datos El Salvador
-tz_sv = pytz.timezone('America/El_Salvador')
-loc_sv = wgs84.latlon(13.689, -89.187)
 
 st.markdown("<h1 class='main-title'>🌙 Calendario Lunar</h1>", unsafe_allow_html=True)
 
 # Selector de Año
-st.markdown('<p class="big-font">Año:</p>', unsafe_allow_html=True)
+st.markdown('<p class="big-font">Selecciona el Año:</p>', unsafe_allow_html=True)
 anio = st.number_input("", min_value=2024, max_value=2030, value=datetime.now(tz_sv).year, label_visibility="collapsed")
 
-# Selector de Mes
-st.markdown('<p class="big-font">Mes:</p>', unsafe_allow_html=True)
+# Selector de Mes (Abreviados)
+st.markdown('<p class="big-font">Selecciona el Mes:</p>', unsafe_allow_html=True)
 meses_nombres = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"]
 meses_abr = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"]
 
 if 'mes_sel' not in st.session_state:
     st.session_state.mes_sel = datetime.now(tz_sv).month
 
-# Botones en filas de 3 perfectamente centradas
-for r in range(4):
-    cols = st.columns(3)
-    for c in range(3):
-        idx = r * 3 + c
-        if cols[c].button(meses_abr[idx], key=f"btn_{idx}"):
-            st.session_state.mes_sel = idx + 1
+# Botones centrados
+cols = st.columns(3)
+for i in range(12):
+    with cols[i % 3]:
+        if st.button(meses_abr[i], key=f"btn_{i}"):
+            st.session_state.mes_sel = i + 1
 
 mes = st.session_state.mes_sel
 
@@ -152,34 +145,10 @@ for semana in cal.monthdayscalendar(anio, mes):
     filas_html += fila + "</tr>"
 
 html_final = f"""
-<div style='text-align:center; color:#FF8C00; font-size:24px; font-weight:bold; margin-bottom:8px; font-family:sans-serif;'>
+<div style='text-align:center; color:#FF8C00; font-size:28px; font-weight:bold; margin-bottom:15px; font-family:sans-serif;'>
     {meses_nombres[mes-1]} {anio}
 </div>
 <style>
     table {{ width: 100%; border-collapse: collapse; table-layout: fixed; color: white; border-bottom: 1px solid #333; }}
-    th {{ color: #FF4B4B; font-size: 15px; text-align: center; padding-bottom: 5px; font-family: sans-serif; }}
-    td {{ border: 1px solid #333; height: 72px; vertical-align: top; padding: 4px; }}
-    .n {{ font-size: 16px; font-weight: bold; font-family: sans-serif; }}
-    .e {{ font-size: 26px; text-align: center; margin-top: 2px; line-height: 1; }}
-</style>
-<table>{header}{filas_html}</table>
-"""
-# Altura reducida a 520 para pegar la leyenda
-components.html(html_final, height=520)
-
-# Leyendas Pegadas
-st.markdown('<p class="big-font" style="margin-top: 0px !important;">Significado:</p>', unsafe_allow_html=True)
-st.markdown(f"""
-<div class="info-card">
-    <div class="info-item">🌑 Nueva | 🌘 Celebración</div>
-    <div class="info-item">🌸 Equinoccio | 🌕 Luna Llena</div>
-</div>
-""", unsafe_allow_html=True)
-
-st.markdown('<p class="big-font" style="margin-top: 0px !important;">Conjunción:</p>', unsafe_allow_html=True)
-st.markdown(f"""
-<div class="info-card">
-    <div class="info-item">🌎 {info_utc if info_utc else '---'}</div>
-    <div class="info-item">📍 {info_sv if info_sv else '---'}</div>
-</div>
-""", unsafe_allow_html=True)
+    th {{ color: #FF4B4B; font-size: 17px; text-align: center; padding-bottom: 10px; font-family: sans-serif; }}
+    td {{ border: 1px solid #333; height: 80px; vertical-align: top; padding: 6px
