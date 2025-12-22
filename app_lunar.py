@@ -6,86 +6,48 @@ from datetime import datetime
 import pytz
 import calendar
 
-# Configuración
+# Configuración básica
 st.set_page_config(page_title="Calendario Lunar SV", page_icon="🌙", layout="wide")
 
 # Datos El Salvador
 tz_sv = pytz.timezone('America/El_Salvador')
 loc_sv = wgs84.latlon(13.689, -89.187)
 
-# --- CSS REPARADO Y COMPACTO ---
+# --- ESTILOS LIMPIOS ---
 st.markdown("""
     <style>
-    /* Título y textos */
-    .main-title { text-align: center; color: white; font-size: 24px; font-weight: bold; margin-bottom: 5px; }
-    .label-style { color: #FF8C00; font-weight: bold; text-align: center; margin-bottom: 8px; font-size: 16px; }
-
-    /* FORZAR COLUMNAS PEQUEÑAS PARA BOTONES */
-    [data-testid="stHorizontalBlock"] {
-        gap: 5px !important;
-        display: flex !important;
-        flex-direction: row !important;
-        justify-content: center !important;
-    }
+    .main-title { text-align: center; color: white; font-size: 26px; font-weight: bold; margin-bottom: 10px; }
+    .section-label { color: #FF8C00; font-weight: bold; text-align: center; margin-top: 10px; font-size: 16px; }
     
-    /* Ajuste estricto de botones */
-    div[data-testid="stButton"] > button {
-        width: 100% !important;
-        height: 30px !important;
-        padding: 0px !important;
-        font-size: 13px !important;
-        border: 1px solid #FF8C00 !important;
-        border-radius: 6px !important;
-        background-color: transparent !important;
-        color: white !important;
+    /* Centrar selectores */
+    div[data-testid="stSelectbox"], div[data-testid="stNumberInput"] {
+        max-width: 250px;
+        margin: 0 auto !important;
     }
 
-    /* Cuadros de abajo (Leyendas) */
-    .info-container {
+    /* Estilo para los cuadros de información de abajo */
+    .info-card {
         border: 1px solid #444;
         border-radius: 10px;
         background-color: #1a1a1a;
         padding: 12px;
         margin: 10px auto;
-        max-width: 350px;
+        max-width: 400px;
     }
-    .info-line { 
-        display: flex; 
-        align-items: center; 
-        font-size: 14px; 
-        color: #ddd; 
-        margin-bottom: 4px;
-    }
-
-    /* Input Año */
-    div[data-testid="stNumberInput"] { width: 100px !important; margin: 0 auto !important; }
+    .info-text { font-size: 14px; color: #ddd; margin-bottom: 4px; }
     </style>
     """, unsafe_allow_html=True)
 
 st.markdown("<h1 class='main-title'>🌙 Calendario Lunar</h1>", unsafe_allow_html=True)
 
-# 1. Año
-st.markdown('<p class="label-style">Año:</p>', unsafe_allow_html=True)
-anio = st.number_input("", min_value=2024, max_value=2030, value=datetime.now(tz_sv).year, label_visibility="collapsed")
-
-# 2. Meses en cuadrícula real de 3
-st.markdown('<p class="label-style">Mes:</p>', unsafe_allow_html=True)
-meses_abr = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"]
-meses_nombres = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"]
-
-if 'mes_sel' not in st.session_state:
-    st.session_state.mes_sel = datetime.now(tz_sv).month
-
-# Dibujar botones
-for i in range(0, 12, 3):
-    cols = st.columns([1,1,1]) # Forzamos 3 columnas iguales
-    for j in range(3):
-        idx = i + j
-        if idx < 12:
-            if cols[j].button(meses_abr[idx], key=f"btn_{idx}"):
-                st.session_state.mes_sel = idx + 1
-
-mes = st.session_state.mes_sel
+# 1. Selectores Simples (Año y Mes)
+col_a, col_b = st.columns(2)
+with col_a:
+    anio = st.number_input("Año", min_value=2024, max_value=2030, value=datetime.now(tz_sv).year)
+with col_b:
+    meses_nombres = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"]
+    mes_nombre = st.selectbox("Mes", meses_nombres, index=datetime.now(tz_sv).month - 1)
+    mes = meses_nombres.index(mes_nombre) + 1
 
 # --- CÁLCULOS ---
 ts = api.load.timescale()
@@ -100,7 +62,6 @@ t_equi, y_equi = almanac.find_discrete(t0, t1, almanac.seasons(eph))
 equi_dict = {ti.astimezone(tz_sv).day: yi for ti, yi in zip(t_equi, y_equi)}
 
 info_utc, info_sv = "", ""
-# Iconos grandes para el calendario
 iconos_cal = {0: "🌑", 1: "🌓", 2: "🌕", 3: "🌗"}
 
 # Construir tabla HTML
@@ -138,33 +99,31 @@ for semana in cal.monthdayscalendar(anio, mes):
     filas_html += fila + "</tr>"
 
 # Render de Tabla
-html_cal = f"""
-<div style='text-align:center; color:#FF8C00; font-size:18px; font-weight:bold; margin-bottom:5px;'>
-    {meses_nombres[mes-1]} {anio}
+html_final = f"""
+<div style='text-align:center; color:#FF8C00; font-size:20px; font-weight:bold; margin-bottom:8px;'>
+    {mes_nombre} {anio}
 </div>
 <style>
     table {{ width: 100%; border-collapse: collapse; table-layout: fixed; color: white; }}
-    th {{ color: #FF4B4B; font-size: 12px; text-align: center; padding-bottom: 4px; }}
-    td {{ border: 1px solid #333; height: 55px; vertical-align: top; padding: 2px; box-sizing: border-box; }}
-    .n {{ font-size: 13px; font-weight: bold; }}
-    .e {{ font-size: 20px; text-align: center; margin-top: 1px; }}
+    th {{ color: #FF4B4B; font-size: 14px; text-align: center; padding-bottom: 5px; }}
+    td {{ border: 1px solid #333; height: 60px; vertical-align: top; padding: 4px; box-sizing: border-box; }}
+    .n {{ font-size: 15px; font-weight: bold; }}
+    .e {{ font-size: 22px; text-align: center; margin-top: 2px; }}
 </style>
 <table>{header}{filas_html}</table>
 """
-components.html(html_cal, height=380)
+components.html(html_final, height=420)
 
-# 3. Leyendas (Cuadros Reparados)
+# 3. Cuadros de Leyenda
 st.markdown(f"""
-<div class="info-container">
-    <div style="color:#FF8C00; font-weight:bold; margin-bottom:8px; font-size:15px; text-align:center;">Simbología:</div>
-    <div class="info-line">🌑 Luna Nueva / Conjunción</div>
-    <div class="info-line">🌘 Día de Celebración</div>
-    <div class="info-line">🌸 Equinoccio / 🌕 Luna Llena</div>
+<div class="info-card">
+    <div style="color:#FF8C00; font-weight:bold; margin-bottom:5px;">Simbología:</div>
+    <div class="info-text">🌑 Nueva | 🌘 Celebración</div>
+    <div class="info-text">🌸 Equinoccio | 🌕 Llena</div>
 </div>
-
-<div class="info-container">
-    <div style="color:#FF8C00; font-weight:bold; margin-bottom:8px; font-size:15px; text-align:center;">Datos Conjunción:</div>
-    <div class="info-line">🌎 {info_utc if info_utc else '---'}</div>
-    <div class="info-line">📍 {info_sv if info_sv else '---'}</div>
+<div class="info-card">
+    <div style="color:#FF8C00; font-weight:bold; margin-bottom:5px;">Datos Conjunción:</div>
+    <div class="info-text">🌎 {info_utc if info_utc else '---'}</div>
+    <div class="info-text">📍 {info_sv if info_sv else '---'}</div>
 </div>
 """, unsafe_allow_html=True)
