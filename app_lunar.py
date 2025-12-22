@@ -76,4 +76,5 @@ html = f"""
 """
 components.html(html, height=500)
 
-st.write(f"🌑 **Luna Nueva:** {proxima_nueva.strftime('%d/%m/%Y %I:%M %p')}")
+st.write(f"🌑 **Luna Nueva:** {proxima_nueva.strftime('%d/%m/%Y %I:%M %p')}"
+         # Reinicio.
