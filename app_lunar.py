@@ -13,53 +13,51 @@ st.set_page_config(page_title="Calendario Lunar SV", page_icon="🌙", layout="w
 tz_sv = pytz.timezone('America/El_Salvador')
 loc_sv = wgs84.latlon(13.689, -89.187)
 
-# --- ESTILOS CSS FINALES ---
+# --- ESTILOS CSS REFINADOS ---
 st.markdown("""
     <style>
-    .main-title { text-align: center; color: white; font-size: 35px; font-weight: bold; margin-bottom: 5px; }
+    .main-title { text-align: center; color: white; font-size: 30px; font-weight: bold; margin-bottom: 0px; }
     .big-font {
-        font-size: 22px !important; 
+        font-size: 18px !important; 
         font-weight: bold; 
         color: #FF8C00; 
-        margin-top: 20px !important;
-        margin-bottom: 10px !important;
+        margin-top: 15px !important;
+        margin-bottom: 5px !important;
         text-align: center;
     }
     
-    /* Estilo para los cuadros de abajo (Leyendas) */
+    /* BOTONES DE MES MÁS PEQUEÑOS */
+    button[kind="secondary"] {
+        border: 1.2px solid #FF8C00 !important;
+        border-radius: 8px !important;
+        height: 32px !important; /* Altura reducida */
+        font-size: 14px !important; /* Letra más pequeña */
+        font-weight: normal !important;
+        padding: 0px !important;
+        margin-bottom: -10px !important;
+    }
+
+    /* Ajuste de columnas para que no se separen tanto */
+    [data-testid="stHorizontalBlock"] {
+        gap: 5px !important;
+        margin: 0 auto !important;
+        max-width: 350px !important;
+    }
+
+    /* Cuadros de abajo */
     .info-card { 
         border: 1px solid #444; 
-        padding: 18px; 
-        border-radius: 12px; 
+        padding: 12px; 
+        border-radius: 10px; 
         background-color: #1a1a1a; 
-        margin: 10px auto !important;
-        max-width: 450px;
-        text-align: left;
+        margin: 8px auto !important;
+        max-width: 400px;
     }
-    .info-item { font-size: 17px; color: #ddd; margin-bottom: 8px; display: flex; align-items: center; }
-
-    /* Forzar 3 columnas de meses en móvil */
-    [data-testid="stHorizontalBlock"] {
-        display: flex !important;
-        flex-direction: row !important;
-        flex-wrap: nowrap !important;
-        justify-content: center !important;
-    }
-    div[data-testid="column"] {
-        flex: 1 1 33% !important;
-        min-width: 80px !important;
-    }
-    
-    button[kind="secondary"] {
-        border: 1.8px solid #FF8C00 !important;
-        border-radius: 10px !important;
-        height: 45px !important;
-        font-weight: bold !important;
-    }
+    .info-item { font-size: 15px; color: #ddd; margin-bottom: 5px; display: flex; align-items: center; }
 
     /* Centrar input de año */
-    div[data-testid="stNumberInput"] { width: 150px !important; margin: 0 auto !important; }
-    input { font-size: 24px !important; font-weight: bold !important; text-align: center !important; }
+    div[data-testid="stNumberInput"] { width: 120px !important; margin: 0 auto !important; }
+    input { font-size: 20px !important; font-weight: bold !important; text-align: center !important; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -70,14 +68,14 @@ st.markdown('<p class="big-font">Año:</p>', unsafe_allow_html=True)
 anio = st.number_input("", min_value=2024, max_value=2030, value=datetime.now(tz_sv).year, label_visibility="collapsed")
 
 # 2. Selector de Mes
-st.markdown('<p class="big-font">Selecciona el Mes:</p>', unsafe_allow_html=True)
+st.markdown('<p class="big-font">Mes:</p>', unsafe_allow_html=True)
 meses_abr = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"]
 meses_nombres = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"]
 
 if 'mes_sel' not in st.session_state:
     st.session_state.mes_sel = datetime.now(tz_sv).month
 
-# Botones en filas de 3
+# Dibujar botones compactos
 for i in range(0, 12, 3):
     cols = st.columns(3)
     for j in range(3):
@@ -122,7 +120,6 @@ for semana in cal.monthdayscalendar(anio, mes):
                         t_conj = fases_dict[dia][1]
                         info_utc = f"{t_conj.astimezone(pytz.utc).strftime('%d/%m/%y %H:%M')} (UTC)"
                         info_sv = f"{t_conj.strftime('%d/%m/%y %I:%M %p')} (SV)"
-                        # Lógica celebración
                         t_s0, t_s1 = ts.from_datetime(t_conj.replace(hour=0, minute=0)), ts.from_datetime(t_conj.replace(hour=23, minute=59))
                         t_s, y_s = almanac.find_discrete(t_s0, t_s1, almanac.sunrise_sunset(eph, loc_sv))
                         atardecer = next((ti.astimezone(tz_sv) for ti, yi in zip(t_s, y_s) if yi == 0), t_conj.replace(hour=17, minute=45))
@@ -139,35 +136,29 @@ for semana in cal.monthdayscalendar(anio, mes):
 
 # Render de Tabla
 html_cal = f"""
-<div style='text-align:center; color:#FF8C00; font-size:26px; font-weight:bold; margin-bottom:10px; font-family:sans-serif;'>
+<div style='text-align:center; color:#FF8C00; font-size:22px; font-weight:bold; margin-bottom:8px; font-family:sans-serif;'>
     {meses_nombres[mes-1]} {anio}
 </div>
 <style>
     table {{ width: 100%; border-collapse: collapse; table-layout: fixed; color: white; border-bottom: 1px solid #333; }}
-    th {{ color: #FF4B4B; font-size: 16px; text-align: center; padding-bottom: 8px; font-family: sans-serif; }}
-    td {{ border: 1px solid #333; height: 75px; vertical-align: top; padding: 5px; box-sizing: border-box; }}
-    .n {{ font-size: 17px; font-weight: bold; font-family: sans-serif; }}
-    .e {{ font-size: 28px; text-align: center; margin-top: 4px; line-height: 1; }}
+    th {{ color: #FF4B4B; font-size: 14px; text-align: center; padding-bottom: 5px; font-family: sans-serif; }}
+    td {{ border: 1px solid #333; height: 65px; vertical-align: top; padding: 4px; box-sizing: border-box; }}
+    .n {{ font-size: 15px; font-weight: bold; font-family: sans-serif; }}
+    .e {{ font-size: 24px; text-align: center; margin-top: 2px; line-height: 1; }}
 </style>
 <table>{header}{filas_html}</table>
 """
-components.html(html_cal, height=520)
+components.html(html_cal, height=460)
 
 # 3. Leyendas
 st.markdown('<p class="big-font" style="margin-top:0px !important;">Significado:</p>', unsafe_allow_html=True)
 st.markdown(f"""
 <div class="info-card">
-    <div class="info-item"><span style="margin-right:10px;">🌑</span> Luna Nueva (Conjunción)</div>
-    <div class="info-item"><span style="margin-right:10px;">🌘</span> Día de Celebración</div>
-    <div class="info-item"><span style="margin-right:10px;">🌸</span> Equinoccio de Primavera</div>
-    <div class="info-item"><span style="margin-right:10px;">🌕</span> Luna Llena</div>
+    <div class="info-item">🌑 Nueva | 🌘 Celebración</div>
+    <div class="info-item">🌸 Equinoccio | 🌕 Luna Llena</div>
 </div>
-""", unsafe_allow_html=True)
-
-st.markdown('<p class="big-font" style="margin-top:5px !important;">Datos Conjunción:</p>', unsafe_allow_html=True)
-st.markdown(f"""
 <div class="info-card">
-    <div class="info-item"><span style="margin-right:10px;">🌎</span> {info_utc if info_utc else '---'}</div>
-    <div class="info-item"><span style="margin-right:10px;">📍</span> {info_sv if info_sv else '---'}</div>
+    <div class="info-item">🌎 {info_utc if info_utc else '---'}</div>
+    <div class="info-item">📍 {info_sv if info_sv else '---'}</div>
 </div>
 """, unsafe_allow_html=True)
