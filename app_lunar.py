@@ -15,7 +15,10 @@ loc_sv = wgs84.latlon(13.689, -89.187)
 
 st.title("🌙 Calendario Lunar SV")
 
-# --- 1. BOTONERA DE MESES (VERSION ULTRA COMPACTA) ---
+# --- 1. SELECTOR DE AÑO (AHORA ARRIBA) ---
+anio = st.number_input("Selecciona el Año", min_value=2024, max_value=2030, value=datetime.now(tz_sv).year)
+
+# --- 2. BOTONERA DE MESES MEJORADA ---
 meses_abr = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"]
 
 if 'mes_sel' not in st.session_state:
@@ -23,38 +26,33 @@ if 'mes_sel' not in st.session_state:
 
 st.write("Selecciona el Mes:")
 
-# CSS para forzar botones pequeños en filas
+# CSS Ajustado: Botones un poco más grandes y texto con espacio
 st.markdown("""
     <style>
-    .stHorizontalBlock {
-        gap: 0.1rem !important;
-    }
-    div[data-testid="stHorizontalBlock"] > div {
-        min-width: 0px !important;
-        flex: 1 1 0% !important;
+    div[data-testid="stHorizontalBlock"] {
+        gap: 5px !important;
     }
     button[kind="secondary"] {
-        padding: 0px !important;
-        font-size: 11px !important;
-        height: 30px !important;
+        padding: 5px 0px !important;
+        font-size: 14px !important;
+        height: 45px !important;
+        font-weight: bold !important;
     }
     </style>
     """, unsafe_allow_html=True)
 
-# Fila 1 (1-6)
+# Fila 1 (Ene - Jun)
 c1 = st.columns(6)
 for i in range(6):
-    if c1[i].button(meses_abr[i], key=f"b{i+1}"):
+    if c1[i].button(meses_abr[i], key=f"b{i+1}", use_container_width=True):
         st.session_state.mes_sel = i + 1
 
-# Fila 2 (7-12)
+# Fila 2 (Jul - Dic)
 c2 = st.columns(6)
 for i in range(6, 12):
-    if c2[i-6].button(meses_abr[i], key=f"b{i+1}"):
+    if c2[i-6].button(meses_abr[i], key=f"b{i+1}", use_container_width=True):
         st.session_state.mes_sel = i + 1
 
-# --- 2. SELECTOR DE AÑO ---
-anio = st.number_input("Año", min_value=2024, max_value=2030, value=datetime.now(tz_sv).year)
 mes = st.session_state.mes_sel
 
 # --- LÓGICA DE CÁLCULO ---
@@ -107,30 +105,30 @@ for semana in cal.monthdayscalendar(anio, mes):
     fila += "</tr>"
     filas_html += fila
 
-# HTML Final Limpio
+# HTML Final
 html_final = f"""
-<div style='text-align:center; color:#FFD700; font-size:20px; font-weight:bold; margin-bottom:10px; font-family:sans-serif;'>
+<div style='text-align:center; color:#FFD700; font-size:22px; font-weight:bold; margin-bottom:10px; font-family:sans-serif;'>
     {meses_nombres[mes-1]} {anio}
 </div>
 <style>
     table {{ width: 100%; border-collapse: collapse; table-layout: fixed; font-family: sans-serif; color: white; }}
     th {{ color: #aaa; font-size: 13px; padding-bottom: 5px; text-align: center; }}
-    td {{ border: 1px solid #444; height: 65px; vertical-align: top; padding: 5px; }}
-    .n {{ font-size: 16px; color: #ffffff; font-weight: bold; }}
-    .e {{ font-size: 20px; text-align: center; margin-top: 5px; }}
+    td {{ border: 1px solid #444; height: 68px; vertical-align: top; padding: 5px; }}
+    .n {{ font-size: 17px; color: #ffffff; font-weight: bold; }}
+    .e {{ font-size: 22px; text-align: center; margin-top: 5px; }}
 </style>
 <table>{header}{filas_html}</table>
 """
 
-components.html(html_final, height=500, scrolling=False)
+components.html(html_final, height=520, scrolling=False)
 
-# --- 3. INFORMACIÓN TÉCNICA LIMPIA ---
+# --- 3. INFORMACIÓN TÉCNICA ---
 if info_utc:
     st.markdown(f"""
-    <div style="border: 1px solid #444; padding: 8px; border-radius: 5px; background-color: #1e1e1e; font-family: sans-serif;">
-        <span style="color: #aaa; font-size: 13px;">◼ {info_utc}</span><br>
-        <span style="color: #aaa; font-size: 13px;">◼ {info_sv}</span>
+    <div style="border: 1px solid #444; padding: 10px; border-radius: 5px; background-color: #1e1e1e; font-family: sans-serif;">
+        <span style="color: #aaa; font-size: 14px;">◼ {info_utc}</span><br>
+        <span style="color: #aaa; font-size: 14px;">◼ {info_sv}</span>
     </div>
     """, unsafe_allow_html=True)
 
-st.sidebar.caption("v13.0 - Grid Optimization")
+st.sidebar.caption("v14.0 - Confort Visual")
